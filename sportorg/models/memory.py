@@ -106,6 +106,7 @@ class ResultStatus(_TitleType):
     DID_NOT_ENTER = PrintableValue(14, _('Did not enter'))
     CANCELLED = PrintableValue(15, _('Cancelled'))
     RESTORED = PrintableValue(16, _('Restored'))
+    MISS_PENALTY_LAP = PrintableValue(17, _('Missing penalty lap'))
 
 
 class Organization(Model):

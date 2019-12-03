@@ -47,12 +47,15 @@ class ResultChecker:
         if result.person is None:
             raise ResultCheckerException('Not person')
         o = cls(result.person)
-        if result.status in [ResultStatus.OK, ResultStatus.MISSING_PUNCH, ResultStatus.OVERTIME]:
+        if result.status in [ResultStatus.OK, ResultStatus.MISSING_PUNCH, 
+                             ResultStatus.OVERTIME, ResultStatus.MISS_PENALTY_LAP]:
             result.status = ResultStatus.OK
             if not o.check_result(result):
                 result.status = ResultStatus.MISSING_PUNCH
                 if not result.status_comment:
                     result.status_comment = StatusComments().remove_hint(StatusComments().get())
+            elif not cls.check_penalty_laps(result):
+                result.status = ResultStatus.MISS_PENALTY_LAP
             elif result.person.group and result.person.group.max_time.to_msec():
                 if result.get_result_otime() > result.person.group.max_time:
                     if race().get_setting('result_processing_mode', 'time') == 'time':
@@ -86,13 +89,18 @@ class ResultChecker:
             return
 
         controls = course.controls
+        splits = result.splits
+
+        if mode == 'laps' and race().get_setting('marked_route_if_penalty_lap_station_check'):
+            lap_station = race().get_setting('marked_route_penalty_lap_station_code')
+            splits, _ = ResultChecker.detach_penalty_laps(splits, lap_station)
 
         if race().get_setting('marked_route_dont_dsq', False):
             # free order, don't penalty for extra cp
-            penalty = ResultChecker.penalty_calculation_free_order(result.splits, controls)
+            penalty = ResultChecker.penalty_calculation_free_order(splits, controls)
         else:
             # marked route with penalty
-            penalty = ResultChecker.penalty_calculation(result.splits, controls, check_existence=True)
+            penalty = ResultChecker.penalty_calculation(splits, controls, check_existence=True)
 
         if race().get_setting('marked_route_max_penalty_by_cp', False):
             # limit the penalty by quantity of controls
@@ -186,6 +194,35 @@ class ResultChecker:
 
         return res
 
+    @staticmethod
+    def detach_penalty_laps(splits, lap_station):
+        if not splits:
+            return [], []
+        for idx, punch in enumerate(reversed(splits)):
+            if int(punch.code) != lap_station:
+                break
+        else:
+            idx = len(splits)
+        idx = len(splits) - idx
+        return splits[:idx], splits[idx:]
+
+    @staticmethod
+    def check_penalty_laps(result):
+        assert isinstance(result, Result)
+
+        mode = race().get_setting('marked_route_mode', 'off')
+        check_laps = race().get_setting('marked_route_if_penalty_lap_station_check')
+        
+        if mode == 'laps' and check_laps:
+            lap_station = race().get_setting('marked_route_penalty_lap_station_code')
+            _, penalty_laps = ResultChecker.detach_penalty_laps(result.splits, lap_station)
+            num_penalty_laps = len(penalty_laps)
+
+            if num_penalty_laps < result.penalty_laps:
+                return False
+
+        return True
+        
     @staticmethod
     def get_control_score(code):
         obj = race()

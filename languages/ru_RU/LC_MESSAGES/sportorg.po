@@ -1368,3 +1368,6 @@ msgstr "Ctrl+K - отправка выделенных участников"
 
 msgid "Ctrl+K on groups - send start list"
 msgstr "Ctrl+K на группах - отправка стартового протокола"
+
+msgid "Missing penalty lap"
+msgstr "Пропущен штрафной круг"

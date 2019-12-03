@@ -147,12 +147,11 @@ class TimekeepingPropertiesDialog(QDialog):
         self.mr_laps_radio = QRadioButton(_('penalty laps'))
         self.mr_layout.addRow(self.mr_laps_radio)
         self.mr_counting_lap_check = QCheckBox(_('counting lap'))
-        self.mr_counting_lap_check.setDisabled(True)  # TODO
         self.mr_layout.addRow(self.mr_counting_lap_check)
         self.mr_lap_station_check = QCheckBox(_('lap station'))
-        self.mr_lap_station_check.setDisabled(True)  # TODO
         self.mr_lap_station_edit = QSpinBox()
         self.mr_lap_station_edit.setMaximumWidth(50)
+        self.mr_lap_station_edit.setMaximum(255)
         self.mr_layout.addRow(self.mr_lap_station_check, self.mr_lap_station_edit)
         self.mr_dont_dqs_check = QCheckBox(_("Don't disqualify"))
         self.mr_layout.addRow(self.mr_dont_dqs_check)
@@ -328,8 +327,8 @@ class TimekeepingPropertiesDialog(QDialog):
         mr_mode = obj.get_setting('marked_route_mode', 'off')
         mr_penalty_time = OTime(msec=obj.get_setting('marked_route_penalty_time', 60000))
         mr_if_counting_lap = obj.get_setting('marked_route_if_counting_lap', True)
-        mr_if_station_check = obj.get_setting('marked_route_if_station_check', False)
-        mr_station_code = obj.get_setting('marked_route_station_code', 80)
+        mr_if_station_check = obj.get_setting('marked_route_if_penalty_lap_station_check', False)
+        mr_station_code = obj.get_setting('marked_route_penalty_lap_station_code', 80)
         mr_if_dont_dsq_check = obj.get_setting('marked_route_dont_dsq', False)
         mr_if_max_penalty_by_cp = obj.get_setting('marked_route_max_penalty_by_cp', False)
 
@@ -465,8 +464,8 @@ class TimekeepingPropertiesDialog(QDialog):
         obj.set_setting('marked_route_mode', mr_mode)
         obj.set_setting('marked_route_penalty_time', mr_penalty_time)
         obj.set_setting('marked_route_if_counting_lap', mr_if_counting_lap)
-        obj.set_setting('marked_route_if_station_check', mr_if_station_check)
-        obj.set_setting('marked_route_station_code', mr_station_code)
+        obj.set_setting('marked_route_if_penalty_lap_station_check', mr_if_station_check)
+        obj.set_setting('marked_route_penalty_lap_station_code', mr_station_code)
         obj.set_setting('marked_route_dont_dsq', mr_if_dont_dsq)
         obj.set_setting('marked_route_max_penalty_by_cp', mr_if_max_penalty_by_cp)
 
