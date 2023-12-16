@@ -83,6 +83,8 @@ class ResultChecker:
             elif not cls.check_penalty_laps(result):
                 result.status = ResultStatus.MISS_PENALTY_LAP
 
+            elif not cls.check_penalty_laps(result):
+                result.status = ResultStatus.MISS_PENALTY_LAP
             elif result.person.group and result.person.group.max_time.to_msec():
                 rp_mode = race().get_setting("result_processing_mode", "time")
                 result_time = result.get_result_otime()
