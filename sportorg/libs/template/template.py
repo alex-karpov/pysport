@@ -31,6 +31,19 @@ def date(value, fmt=None):
     return dateutil.parser.parse(value).strftime(fmt)
 
 
+def plural(value, fmt=None):
+    if value is None:
+        return ''
+    if 5 <= abs(value) <= 19:
+        return 'ов'
+    elif abs(value) % 10 == 1:
+        return ''
+    elif abs(value) % 10 in (2, 3, 4):
+        return 'а'
+    else:
+        return 'ов'
+
+
 def finalize(thing):
     return thing if thing else ''
 
