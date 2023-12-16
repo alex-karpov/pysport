@@ -5,7 +5,7 @@ from PySide2.QtWidgets import QCheckBox, QDialog, QDialogButtonBox, QVBoxLayout,
 
 from sportorg.gui.global_access import GlobalAccess
 from sportorg.language import translate
-from sportorg.models.memory import Qualification, ResultManual, race
+from sportorg.models.memory import Organization, Qualification, ResultManual, race
 from sportorg.utils.time import hhmmss_to_time, time_to_hhmmss
 
 
@@ -18,6 +18,9 @@ def get_value_options():
         translate('Penalty time'),
         translate('Penalty legs'),
         translate('Card number'),
+        translate('Last name'),
+        translate('First name'),
+        translate('Year of birth'),
         translate('Group'),
         translate('Team'),
         translate('Qualification'),
@@ -313,6 +316,12 @@ def get_property(person, key):
     elif key == translate('Card number'):
         if person.card_number:
             return str(person.card_number)
+    elif key == translate('Last name'):
+        return str(person.surname)
+    elif key == translate('First name'):
+        return str(person.name)
+    elif key == translate('Year of birth'):
+        return str(person.year)
     elif key == translate('Group'):
         if person.group:
             return person.group.name
@@ -369,14 +378,24 @@ def set_property(person, key, value, **options):
             result.penalty_laps = int(value)
     elif key == translate('Card number'):
         race().person_card_number(person, int(value))
+    elif key == translate('Last name'):
+        person.surname = value
+    elif key == translate('First name'):
+        person.name = value
+    elif key == translate('Year of birth'):
+        if str(value).isdigit():
+            person.year = int(value)
     elif key == translate('Group'):
         group = race().find_group(value)
         if group:
             person.group = group
     elif key == translate('Team'):
         team = race().find_team(value)
-        if team:
-            person.organization = team
+        if not team:
+            team = Organization()
+            team.name = value
+            race().organizations.append(team)
+        person.organization = team
     elif key == translate('Qualification'):
         qual = Qualification.get_qual_by_name(value)
         if qual is not None:

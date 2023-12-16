@@ -159,7 +159,9 @@ class SportorgPrinter:
         fs_large = 4
 
         # Information about start
-        self.print_line(obj.data.title, fn, fs_main)
+        title = obj.data.description.split('<br>')
+        for line in title:
+            self.print_line(line, fn, fs_main)
         self.print_line(
             str(obj.data.start_datetime)[:10] + ', ' + obj.data.location, fn, fs_main
         )
@@ -371,5 +373,8 @@ class SportorgPrinter:
                     )
 
         self.print_line(obj.data.url, fn, fs_main)
+
+        # empty vertical space for Xprinter printer without blade
+        # for _ in range(14): self.print_line('.', 'Arial', 1)
 
         self.end_page()

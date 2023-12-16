@@ -178,6 +178,23 @@ class ResultChecker:
         origin_array = [i.get_number_code() for i in controls]
         res = 0
 
+        irkutsk = False
+        if irkutsk:
+            # В user_array записываются КП маркировки.
+            # Последний КП маркировки - 44 или 144
+            # КП на штрафном круге - 99 (если не отметился на 44/144)
+            user_array = []
+            last_markir = ['44', '144']
+            penalty = ['99']
+            for punch in splits:
+                code = str(punch.code)
+                if code not in penalty:
+                    user_array.append(code)
+                if code in last_markir + penalty:
+                    break
+            # В origin_array записываются КП из маркировки формата 35(35,135)
+            origin_array = [i.get_number_code() for i in controls if '(' in str(i.code)]
+
         # может дать 0 штрафа при мусоре в чипе
         if check_existence and len(user_array) < len(origin_array):
             # add 1 penalty score for missing points

@@ -42,6 +42,12 @@ class SystemType(Enum):
         return self.__str__()
 
 
+class PrintableValue(object):
+    def __init__(self, value, printable_name):
+        self.value = value
+        self.printable_name = printable_name
+
+
 class _TitleType(Enum):
     def __str__(self):
         return self._name_
@@ -966,6 +972,19 @@ class ResultSportident(Result):
     def get_finish_time(self):
         obj = race()
         finish_source = obj.get_setting('system_finish_source', 'station')
+
+        # Эстафета 4 человека в Нижнем Новгороде 24 августа 2023 г.
+        # Первые этапы финишируют по станции 90, последний этап — по финишной станции
+        nizhni_novgorod_relay = False
+        if nizhni_novgorod_relay:
+            if self.person and self.person.bib > 1000:
+                next_leg_bib = self.person.bib + 1000
+                next_leg_person = find(obj.persons, bib=next_leg_bib)
+                if next_leg_person:
+                    finish_source = 'cp'
+                else:
+                    finish_source = 'station'
+
         if finish_source == 'station':
             if self.finish_time:
                 return self.finish_time
