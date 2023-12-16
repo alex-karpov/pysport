@@ -49,12 +49,15 @@ class ResultChecker:
             ResultStatus.OK,
             ResultStatus.MISSING_PUNCH,
             ResultStatus.OVERTIME,
+            ResultStatus.MISS_PENALTY_LAP,
         ]:
             result.status = ResultStatus.OK
             if not o.check_result(result):
                 result.status = ResultStatus.MISSING_PUNCH
                 result.status_comment = 'п.п.3.13.12.2'
 
+            elif not cls.check_penalty_laps(result):
+                result.status = ResultStatus.MISS_PENALTY_LAP
             elif result.person.group and result.person.group.max_time.to_msec():
                 if result.get_result_otime() > result.person.group.max_time:
                     if race().get_setting('result_processing_mode', 'time') == 'time':
@@ -72,7 +75,7 @@ class ResultChecker:
                 ResultChecker.calculate_penalty(result)
 
     @staticmethod
-    def calculate_penalty(result):
+    def calculate_penalty(result: Result):
         mode = race().get_setting('marked_route_mode', 'off')
         if mode == 'off':
             return
@@ -89,16 +92,21 @@ class ResultChecker:
             return
 
         controls = course.controls
+        splits = result.splits
+
+        if mode == 'laps' and race().get_setting(
+            'marked_route_if_penalty_lap_station_check'
+        ):
+            lap_station = race().get_setting('marked_route_penalty_lap_station_code')
+            splits, _ = ResultChecker.detach_penalty_laps2(splits, lap_station)
 
         if race().get_setting('marked_route_dont_dsq', False):
             # free order, don't penalty for extra cp
-            penalty = ResultChecker.penalty_calculation_free_order(
-                result.splits, controls
-            )
+            penalty = ResultChecker.penalty_calculation_free_order(splits, controls)
         else:
             # marked route with penalty
             penalty = ResultChecker.penalty_calculation(
-                result.splits, controls, check_existence=True
+                splits, controls, check_existence=True
             )
 
         if race().get_setting('marked_route_max_penalty_by_cp', False):
@@ -167,9 +175,30 @@ class ResultChecker:
                                                      // returns 1 if check_existence=True
         ```
         """
-        user_array = [i.code for i in splits]
+
+        # Walkaround: if i.code != '199' убирает станцию штрафного круга
+        user_array = [i.code for i in splits if i.code != '199']
         origin_array = [i.get_number_code() for i in controls]
         res = 0
+
+        irkutsk = False
+        if irkutsk:
+            # В user_array записываются КП маркировки.
+            # Последний КП маркировки - 44 или 144
+            # КП на штрафном круге - 99 (если не отметился на 44/144)
+            user_array = []
+            last_markir = ['44', '144']
+            penalty = ['99']
+            for punch in splits:
+                code = str(punch.code)
+                if code not in penalty:
+                    user_array.append(code)
+                if code in last_markir + penalty:
+                    break
+            # В origin_array записываются КП из маркировки формата 35(35,135)
+            origin_array = [i.get_number_code() for i in controls if '(' in str(i.code)]
+
+        # может дать 0 штрафа при мусоре в чипе
         if check_existence and len(user_array) < len(origin_array):
             # add 1 penalty score for missing points
             res = len(origin_array) - len(user_array)
@@ -231,6 +260,48 @@ class ResultChecker:
         res += max(len(controls) - correct_count, 0)
 
         return res
+
+    @staticmethod
+    def detach_penalty_laps(splits, lap_station):
+        if not splits:
+            return [], []
+        for idx, punch in enumerate(reversed(splits)):
+            if int(punch.code) != lap_station:
+                break
+        else:
+            idx = len(splits)
+        idx = len(splits) - idx
+        return splits[:idx], splits[idx:]
+
+    @staticmethod
+    def detach_penalty_laps2(splits, lap_station):
+        """Walkaround: извлекает отметки на штрафной станции.
+        Наивный метод, надо учитывать, что штрафные КП должны относиться
+        к пункту оценки, а не появляться из неочищенного чипа"""
+        if not splits:
+            return [], []
+        regular = [punch for punch in splits if int(punch.code) != lap_station]
+        penalty = [punch for punch in splits if int(punch.code) == lap_station]
+        return regular, penalty
+
+    @staticmethod
+    def check_penalty_laps(result):
+        assert isinstance(result, Result)
+
+        mode = race().get_setting('marked_route_mode', 'off')
+        check_laps = race().get_setting('marked_route_if_penalty_lap_station_check')
+
+        if mode == 'laps' and check_laps:
+            lap_station = race().get_setting('marked_route_penalty_lap_station_code')
+            _, penalty_laps = ResultChecker.detach_penalty_laps2(
+                result.splits, lap_station
+            )
+            num_penalty_laps = len(penalty_laps)
+
+            if num_penalty_laps < result.penalty_laps:
+                return False
+
+        return True
 
     @staticmethod
     def get_control_score(code):
