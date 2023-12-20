@@ -510,3 +510,24 @@ class ResultChecker:
                 return 0
 
         return ret
+
+    @staticmethod
+    def marked_route_check_penalty_laps(result: Result):
+        obj = race()
+
+        mr_if_counting_lap = obj.get_setting('marked_route_if_counting_lap', False)
+        mr_if_station_check = obj.get_setting('marked_route_if_station_check', False)
+        mr_station_code = obj.get_setting('marked_route_penalty_lap_station_code', 0)
+
+        if mr_if_station_check and int(mr_station_code) > 0:
+            count_laps = 0
+            if mr_if_counting_lap:
+                count_laps = -1
+
+            for split in result.splits:
+                if str(split.code) == str(mr_station_code):
+                    count_laps += 1
+
+            if count_laps < result.penalty_laps:
+                result.status = ResultStatus.MISSING_PUNCH
+                result.status_comment = 'п.п.4.6.12.7'
