@@ -94,9 +94,7 @@ class ResultChecker:
         controls = course.controls
         splits = result.splits
 
-        if mode == 'laps' and race().get_setting(
-            'marked_route_if_penalty_lap_station_check'
-        ):
+        if mode == 'laps' and race().get_setting('marked_route_if_station_check'):
             lap_station = race().get_setting('marked_route_penalty_lap_station_code')
             splits, _ = ResultChecker.detach_penalty_laps2(splits, lap_station)
 
@@ -176,8 +174,7 @@ class ResultChecker:
         ```
         """
 
-        # Walkaround: if i.code != '199' убирает станцию штрафного круга
-        user_array = [i.code for i in splits if i.code != '199']
+        user_array = [i.code for i in splits]
         origin_array = [i.get_number_code() for i in controls]
         res = 0
 
@@ -275,9 +272,9 @@ class ResultChecker:
 
     @staticmethod
     def detach_penalty_laps2(splits, lap_station):
-        """Walkaround: извлекает отметки на штрафной станции.
-        Наивный метод, надо учитывать, что штрафные КП должны относиться
-        к пункту оценки, а не появляться из неочищенного чипа"""
+        '''Detaches penalty laps from the given list of splits
+        based on the provided lap station code.
+        '''
         if not splits:
             return [], []
         regular = [punch for punch in splits if int(punch.code) != lap_station]
@@ -289,7 +286,7 @@ class ResultChecker:
         assert isinstance(result, Result)
 
         mode = race().get_setting('marked_route_mode', 'off')
-        check_laps = race().get_setting('marked_route_if_penalty_lap_station_check')
+        check_laps = race().get_setting('marked_route_if_station_check')
 
         if mode == 'laps' and check_laps:
             lap_station = race().get_setting('marked_route_penalty_lap_station_code')
@@ -352,7 +349,7 @@ class ResultChecker:
 
         mr_if_counting_lap = obj.get_setting('marked_route_if_counting_lap', False)
         mr_if_station_check = obj.get_setting('marked_route_if_station_check', False)
-        mr_station_code = obj.get_setting('marked_route_station_code', 0)
+        mr_station_code = obj.get_setting('marked_route_penalty_lap_station_code', 0)
 
         if mr_if_station_check and int(mr_station_code) > 0:
             count_laps = 0
