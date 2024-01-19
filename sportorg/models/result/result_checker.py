@@ -530,4 +530,4 @@ class ResultChecker:
 
             if count_laps < result.penalty_laps:
                 result.status = ResultStatus.MISSING_PUNCH
-                result.status_comment = 'п.п.4.6.12.7'
+                result.status_comment = 'пп4.6.12.7'
