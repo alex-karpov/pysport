@@ -54,7 +54,7 @@ class ResultChecker:
             result.status = ResultStatus.OK
             if not o.check_result(result):
                 result.status = ResultStatus.MISSING_PUNCH
-                result.status_comment = 'п.п.3.13.12.2'
+                result.status_comment = 'пп3.13.12.2'
 
             elif not cls.check_penalty_laps(result):
                 result.status = ResultStatus.MISS_PENALTY_LAP
@@ -62,7 +62,7 @@ class ResultChecker:
                 if result.get_result_otime() > result.person.group.max_time:
                     if race().get_setting('result_processing_mode', 'time') == 'time':
                         result.status = ResultStatus.OVERTIME
-                        result.status_comment = 'п.п.5.4.7'
+                        result.status_comment = 'пп5.4.7'
 
         return o
 
@@ -362,4 +362,4 @@ class ResultChecker:
 
             if count_laps < result.penalty_laps:
                 result.status = ResultStatus.MISSING_PUNCH
-                result.status_comment = 'п.п.4.6.12.7'
+                result.status_comment = 'пп4.6.12.7'
