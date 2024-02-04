@@ -52,7 +52,7 @@
                     year: result.person.birth_date ? (new Date(result.person.birth_date)).getFullYear() : '',
                     penalty_time: toMMSS(result.penalty_time),
                     penalty_laps: result.penalty_laps,
-                    result: result.result,
+                    result: result.result_current,
                     result_relay: result.result_relay,
                     result_msec: result.result_msec,
                     diff: race.settings.result_processing_mode === 'scores' ? result.diff_scores : '+' + toMMSS(result.diff),
