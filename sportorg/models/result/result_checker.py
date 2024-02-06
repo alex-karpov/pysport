@@ -1,4 +1,5 @@
 import logging
+from sportorg.common.levenshtein import levenshtein
 
 from sportorg.common.otime import OTime
 from sportorg.models.memory import Person, Result, ResultStatus, find, race
@@ -248,13 +249,22 @@ class ResultChecker:
         origin: 40,* ,* ,90; athlete: 40,41,90,90; result:0 TODO:1 - only one incorrect case
         ```
         """
-        res = 0
-        correct_count = 0
-        for i in splits:
-            if not i.has_penalty:
-                correct_count += 1
+        user_array = [i.code for i in splits]
+        origin_array = [i.get_number_code() for i in controls]
 
-        res += max(len(controls) - correct_count, 0)
+        # Use old algorithm if '*' or '%' in origin_array
+        if '0' in origin_array: 
+            res = 0
+            correct_count = 0
+            for i in splits:
+                if not i.has_penalty:
+                    correct_count += 1
+
+            res += max(len(controls) - correct_count, 0)
+            return res
+
+        # Calculate penalty using levenshtein distance
+        res = levenshtein(user_array, origin_array)
 
         return res
 
