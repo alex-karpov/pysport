@@ -243,6 +243,9 @@ class SportorgPrinter:
                 # Маркировка на ПР в Томске по варианту, приближенному к варианту Д (пп4.11)
                 tomsk_marked_route = False
 
+                # Маркировка на ПР в Томске по варианту, приближенному к варианту Д (пп4.11)
+                tomsk_marked_route = False
+
                 # Highlight correct controls of marked route ( '31' and '31(31,32,33)' => + )
                 # Не печатать правильные отметки в сплитах для предотвращения передачи информации
                 if is_penalty_used and course and not tomsk_marked_route:

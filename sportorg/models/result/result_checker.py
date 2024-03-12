@@ -1,5 +1,4 @@
 import logging
-from sportorg.common.levenshtein import levenshtein
 
 from sportorg.common.levenshtein import levenshtein
 from sportorg.common.otime import OTime
