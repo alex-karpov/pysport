@@ -1,6 +1,6 @@
 import logging
-from sportorg.common.levenshtein import levenshtein
 
+from sportorg.common.levenshtein import levenshtein
 from sportorg.common.otime import OTime
 from sportorg.models.memory import Person, Result, ResultStatus, find, race
 
@@ -101,7 +101,10 @@ class ResultChecker:
 
         if race().get_setting('marked_route_dont_dsq', False):
             # free order, don't penalty for extra cp
-            penalty = ResultChecker.penalty_calculation_free_order(splits, controls)
+            # penalty = ResultChecker.penalty_calculation_free_order(splits, controls)
+            penalty = ResultChecker.penalty_calculation(
+                splits, controls, check_existence=True
+            )
         else:
             # marked route with penalty
             penalty = ResultChecker.penalty_calculation(
@@ -253,7 +256,7 @@ class ResultChecker:
         origin_array = [i.get_number_code() for i in controls]
 
         # Use old algorithm if '*' or '%' in origin_array
-        if '0' in origin_array: 
+        if '0' in origin_array:
             res = 0
             correct_count = 0
             for i in splits:

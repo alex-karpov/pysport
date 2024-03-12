@@ -308,6 +308,7 @@ def test_marked_route_dont_dsq_old(controls, splits, expected_penalty, expected_
     else:
         assert dsq(controls, splits, penalty=expected_penalty)
 
+
 @pytest.mark.parametrize(
     'controls, splits, expected_penalty, expected_status',
     [

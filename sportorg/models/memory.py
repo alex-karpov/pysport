@@ -1017,7 +1017,7 @@ class ResultSportident(Result):
                 splits.append(split)
         return splits
 
-    def check(self, course=None):
+    def check(self, course: Course = None):
         obj = race()
         if not course:
             return super().check()
@@ -1212,6 +1212,24 @@ class ResultSportident(Result):
 
             except KeyError:
                 return False
+
+        # Маркировка на ПР в Томске по варианту, приближенному к варианту Д (пп4.11)
+        tomsk_marked_route = False
+
+        # # Участник дисквалифицируется, если количество КП в чипе меньше количества
+        # # истинных КП, указанного в параметрах дистанции.
+        # if tomsk_marked_route:
+        #     if len(self.splits) < len(count_controls):
+        #         return False
+
+        # # Участник дисквалифицируется, если не отметил ни одного правильного КП
+        # if tomsk_marked_route:
+        #     try:
+        #         split_codes = [int(split.code) for split in self.splits]
+        #     except:
+        #         pass
+        #     if all([cp.get_number_code() not in split_codes for cp in controls]):
+        #         return False
 
         return False
 
