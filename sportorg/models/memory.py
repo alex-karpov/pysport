@@ -1617,6 +1617,12 @@ class Race(Model):
                 if result.person in person_list:
                     return_results.append(result)
 
+            # Sort groups as in Groups tab
+            order = {course.name: index for index, course in enumerate(self.courses)}
+            return_groups = sorted(
+                list(return_groups), key=lambda course: order[course.name]
+            )
+
             return {
                 'object': self.__class__.__name__,
                 'id': str(self.id),
