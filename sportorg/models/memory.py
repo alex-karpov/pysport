@@ -1049,8 +1049,8 @@ class ResultSportident(Result):
         # если два и больше посторонних КП, то не засчитываются КП из связки.
 
         # Недостатки реализации
-        # * Если между КП из связки взяты посторонние КП, не производится проверка, 
-        #   что промежуточные КП пойдут в зачёт. Из-за этого связка может быть не зачтена.
+        # * Если взял один КП из одной связки, а затем сразу взял другую связку, то обе связки
+        #   не засчитаются.
         # * КП связки могут быть не засчитаны, если спортсмен взял связку в конце дистанции
         #   и в чипе есть лишние КП
         novosibirsk_vybor_pairs = False
@@ -1061,17 +1061,18 @@ class ResultSportident(Result):
             #     'B': {'37': '45', '31': '35', '46': '50'},
             #     'C': {'40': '42', '58': '54', '50': '56'},
             # }
-            pairs = {
-                'A': {'38': '42', '45': '53'},
-                'B': {'38': '42', '45': '53'},
-                'C': {'38': '42'},
+            pairs = {  # Монумент Славы, 14 апреля 2024 г.
+                'A': {'41': '59', '56': '54', '46': '57', '47': '45'},
+                'B': {'46': '57', '47': '45', '41': '59', '56': '54'},
             }
             pairs_on_course = pairs.get(course.name, {})
             # Добавить обратный порядок взятия: {31: 32} -> {31: 32, 32: 31}
             pairs_on_course.update({v: k for k, v in pairs_on_course.items()})
             pair_accept_second = False
             pair_reject_intermediate = False
-
+            pair_first_cp_index = -1
+            pair_intermediate_cp_index = -1
+            pair_second_cp_code = ''
 
         for i in range(len(self.splits)):
             try:
@@ -1138,7 +1139,63 @@ class ResultSportident(Result):
                             is_unique = False
                             break
 
-                    if novosibirsk_vybor_pairs:
+                    if novosibirsk_vybor_pairs and is_unique:
+                        if pair_first_cp_index >= 0 and cur_code == pair_second_cp_code:
+                            # Встречен второй КП из пары
+                            # * засчитать первый КП пары
+                            # * засчитать второй КП пары (сохранить is_unique = True)
+                            # * вернуться в исходное состояние
+                            split_first = self.splits[pair_first_cp_index]
+                            split_first.is_correct = True
+                            split_first.has_penalty = False
+                            recognized_indexes.append(pair_first_cp_index)
+                            split_first.course_index = course_index
+                            course_index += 1
+
+                            if course_index >= count_controls:
+                                is_unique = False
+
+                            pair_first_cp_index = -1
+                            pair_intermediate_cp_index = -1
+                            pair_second_cp_code = ''
+
+                        elif cur_code in pairs_on_course:
+                            # Встречен первый КП в паре
+                            # * отметить этот факт
+                            # * временно пропустить до встречи второго КП
+                            pair_first_cp_index = i
+                            pair_second_cp_code = pairs_on_course[cur_code]
+                            is_unique = False
+
+                        elif pair_first_cp_index >= 0:
+                            # Встречен промежуточный КП
+                            if pair_intermediate_cp_index < 0:
+                                # Предварительно пропустить не засчитывая
+                                pair_intermediate_cp_index = i
+                                is_unique = False
+                            else:
+                                # Два промежуточных КП внутри пары:
+                                # * не засчитывать пару (оставить как есть)
+                                # * засчитать первый промежуточный КП
+                                # * засчитать второй промежуточных КП (оставить is_unique = True)
+                                # * вернуться в исходное состояние
+                                split_intermediate = self.splits[
+                                    pair_intermediate_cp_index
+                                ]
+                                split_intermediate.is_correct = True
+                                split_intermediate.has_penalty = False
+                                recognized_indexes.append(pair_intermediate_cp_index)
+                                split_intermediate.course_index = course_index
+                                course_index += 1
+
+                                if course_index >= count_controls:
+                                    is_unique = False
+
+                                pair_first_cp_index = -1
+                                pair_intermediate_cp_index = -1
+                                pair_second_cp_code = ''
+
+                    if False and novosibirsk_vybor_pairs:
                         if pair_reject_intermediate:
                             pair_reject_intermediate = False
                             is_unique = False
@@ -1636,9 +1693,9 @@ class Race(Model):
                     return_results.append(result)
 
             # Sort groups as in Groups tab
-            order = {course.name: index for index, course in enumerate(self.courses)}
+            order = {group.name: index for index, group in enumerate(self.groups)}
             return_groups = sorted(
-                list(return_groups), key=lambda course: order[course.name]
+                list(return_groups), key=lambda course: order[group.name]
             )
 
             return {
