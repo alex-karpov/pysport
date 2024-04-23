@@ -1554,6 +1554,9 @@ msgstr "Пропущен штрафной круг"
 msgid "contain"
 msgstr "содержит"
 
+msgid "doesn't contain"
+msgstr "не содержит"
+
 msgid "equal to"
 msgstr "равно"
 

@@ -108,13 +108,15 @@ class AbstractSportOrgMemoryModel(QAbstractTableModel):
         current_array.extend(self.filter_backup)
         self.filter_backup.clear()
         for column in self.filter.keys():
-            check_regexp = re.escape(self.filter.get(column)[0])
             action = self.filter.get(column)[1]
+            value = re.escape(self.filter.get(column)[0])
 
-            check = re.compile('.*' + check_regexp + '.*')
-
-            if action == translate('equal to'):
-                check = re.compile(check_regexp + '$')
+            regex_string = {
+                translate('contain'): f'.*{value}.*',
+                translate('equal to'): f'{value}$',
+                translate('doesn\'t contain'): f'^((?!{value}).)*$',
+            }.get(action, '.*')
+            check = re.compile(regex_string)
 
             i = 0
             while i < len(current_array):
