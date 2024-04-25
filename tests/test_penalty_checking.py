@@ -448,7 +448,6 @@ def check(
     result = race().results[0]
     result.splits = make_splits(splits)
     ResultChecker.checking(result)
-    ResultChecker.calculate_penalty(result)
     result_penalty = get_penalty(result)
 
     check_result = result.status == result_status, result_penalty == penalty
@@ -506,9 +505,10 @@ def get_penalty(result: ResultSportident) -> int:
         return result.penalty_laps
     elif marked_route_mode == 'time':
         penalty_time = race().get_setting('marked_route_penalty_time', 60000)
-        return result.penalty_time.to_msec() / penalty_time
-    else:
-        return 0
+        if result.penalty_time:
+            return result.penalty_time.to_msec() / penalty_time
+
+    return 0
 
 
 def exception_message(
@@ -574,6 +574,6 @@ def split_and_course_repr(course: List[Union[int, str]], splits: List[int]) -> s
     str
         Строка со сравнением отметок и дистанции
     """
-    spl = ['Spl'] + splits
-    crs = ['Crs'] + course
+    spl = splits
+    crs = course
     return '\n'.join([f'{s:3}  {c}' for s, c in zip_longest(spl, crs, fillvalue='')])

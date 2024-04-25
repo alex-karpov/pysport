@@ -2,6 +2,7 @@
 Parse SportOrg HTML report (containing full json)
 
 """
+
 import os.path
 import string
 from io import open
@@ -24,4 +25,4 @@ def recovery(file_name: str) -> str:
                     temp_file.write(json)
 
                 return tmp_filename
-    return ""
+    return ''

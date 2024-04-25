@@ -56,14 +56,17 @@ class SportorgPrinter:
         self.move_cursor(font_size * 1.3)
 
     def print_split(self, result):
-        if not race().get_setting('marked_route_if_counting_lap', False):
-            # Обычный сплит
+        if not (
+            race().get_setting('marked_route_if_counting_lap', False)
+            and race().get_setting('marked_route_mode', 'laps') == 'laps'
+        ):
+            # Normal split printout
             self.print_split_normal(result)
         else:
-            # Печать штрафа на пункте оценки: сверху номер, снизу штраф
+            # Printing of bib and penalty for Russian marked route with penalty laps
             self.print_penalty_laps(result)
 
-    def print_penalty_laps(self, result: Result):
+    def print_penalty_laps(self, result: Result) -> None:
         person = result.person
         if person is None:
             return
@@ -75,8 +78,8 @@ class SportorgPrinter:
             self.print_line('.', 'Arial', 1)  # empty vertical space
         self.print_penalty_line(result)
 
-    def print_bib_line(self, result: Result):
-        text = str(result.person.bib)
+    def print_bib_line(self, result: Result) -> None:
+        text = str(result.person.bib) if result.person else ''
 
         font_name = 'Arial Black'
         font_size = 50
@@ -90,12 +93,17 @@ class SportorgPrinter:
             }
         )
         self.dc.SelectObject(font)
-        self.dc.TextOut(self.x, self.y, str(text))
+        self.dc.TextOut(self.x, self.y, text)
 
         self.move_cursor(font_size * 1.3)
 
-    def print_penalty_line(self, result: Result):
-        text = str(result.penalty_laps).rjust(2)
+    def print_penalty_line(self, result: Result) -> None:
+        laps = result.penalty_laps
+        if not result.is_status_ok():
+            laps = max(
+                2, laps
+            )  # print at least 2 laps for disqualified (to have possibility get lap time)
+        text = str(laps).rjust(2)
 
         font_name = 'Arial Black'
         font_size = 50
@@ -131,6 +139,7 @@ class SportorgPrinter:
         self.dc.TextOut(self.x + dx1, self.y - dy, str(text_small))
 
         self.move_cursor(font_size * 1.3)
+        self.end_page()
 
     def print_split_normal(self, result):
         obj = race()

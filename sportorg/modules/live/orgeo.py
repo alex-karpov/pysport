@@ -1,8 +1,9 @@
 from re import subn
 from typing import Any, Dict
 
+from sportorg.common.otime import OTime
 from sportorg.modules.winorient.wdb import WinOrientBinary
-from sportorg.utils.time import int_to_otime
+from sportorg.utils.time import int_to_otime, time_to_hhmmss
 
 LOG_MSG = 'HTTP Status: %s, Msg: %s'
 
@@ -24,7 +25,9 @@ RESULT_STATUS = [
     'DID_NOT_START',
     'DID_NOT_ENTER',
     'CANCELLED',
-]  # 'RESTORED' is 'OK'
+    'OK',  # 'RESTORED' is 'OK'
+    'DISQUALIFIED',  # MISSED_PENALTY_LAP
+]
 
 
 class Orgeo:
@@ -162,6 +165,12 @@ def _get_person_obj(data, race_data, result=None):
             }
             obj['splits'].append(current_split)
 
+            # add info about penalty (as string(20))
+            if result['penalty_laps'] > 0:
+                obj['penalty'] = str(result['penalty_laps'])
+            if result['penalty_time'] > 0:
+                obj['penalty'] = time_to_hhmmss(OTime(msec=result['penalty_time']))
+
     return obj
 
 
@@ -174,9 +183,7 @@ def make_nice(s):
     in: b'{"response":"OK: \\u00ab\\u043a\\u0440\\u043e\\u0441\\u0441-\\u0441\\u043f\\ ...
     out: b'{"response":"OK: «кросс-спринт» - Стартовый успешно загружен | Start list loaded"}'
     """
-    return subn(
-        '(\\\\\\\\u[0-9a-f]{4})', lambda cp: chr(int(cp.groups()[0][3:], 16)), s
-    )[0]
+    return subn('(\\\\u[0-9a-f]{4})', lambda cp: chr(int(cp.groups()[0][3:], 16)), s)[0]
 
 
 async def create(url, data, race_data, log, *, session):
@@ -234,7 +241,7 @@ async def create(url, data, race_data, log, *, session):
                 log.info(LOG_MSG, resp.status, result_txt)
 
         except Exception as e:
-            log.error('Error: %s', str(e))
+            log.exception(e)
 
 
 async def create_online_cp(url, data, race_data, log, *, session):
@@ -272,10 +279,16 @@ async def create_online_cp(url, data, race_data, log, *, session):
 
                     if card_number > 0:
                         code = race_data['settings']['live_cp_code']
-                        finish_time = int_to_otime(res['finish_time'] // 10).to_str()
+                        finish_time = OTime.now()
+                        if res['finish_time'] is not None:
+                            finish_time = int_to_otime(
+                                res['finish_time'] // 10
+                            ).to_str()
                         status = WinOrientBinary.get_wdb_status(item['status'])
                         resp = await o.send_online_cp(card_number, code, finish_time)
-
+                        print(
+                            f'card={card_number} code={str(code)} finish={finish_time}'
+                        )
                         result_txt = make_nice(str(await resp.text()))
 
                         if resp.status != 200:
@@ -312,7 +325,7 @@ async def create_online_cp(url, data, race_data, log, *, session):
                         log.info(LOG_MSG, 401, 'Ignoring empty card number')
 
             except Exception as e:
-                log.error('Error: %s', str(e))
+                log.exception(e)
 
 
 async def delete(url, data, race_data, log, *, session):
