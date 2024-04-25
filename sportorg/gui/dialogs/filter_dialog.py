@@ -35,7 +35,7 @@ class DialogFilter(QDialog):
             actions = [
                 translate('equal to'),
                 translate('contain'),
-                translate('doesn\'t contain'),
+                translate("doesn't contain"),
             ]
             default_action = actions[0]
             self.combo_action = AdvComboBox(self, actions, max_width=90)

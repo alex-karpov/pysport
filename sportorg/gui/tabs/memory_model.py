@@ -114,7 +114,7 @@ class AbstractSportOrgMemoryModel(QAbstractTableModel):
             regex_string = {
                 translate('contain'): f'.*{value}.*',
                 translate('equal to'): f'{value}$',
-                translate('doesn\'t contain'): f'^((?!{value}).)*$',
+                translate("doesn't contain"): f'^((?!{value}).)*$',
             }.get(action, '.*')
             check = re.compile(regex_string)
 
