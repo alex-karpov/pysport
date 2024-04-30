@@ -24,7 +24,7 @@ from sportorg.language import translate
 def test_filter_equal_to_action(pattern, value, expected):
     model = AbstractSportOrgMemoryModel
     check = model.compile_regex(translate('equal to'), pattern)
-    result = model.match(check, value)
+    result = model.match_value(check, str(value))
     assert result == expected
 
 
@@ -48,7 +48,7 @@ def test_filter_equal_to_action(pattern, value, expected):
 def test_filter_contain_to_action(pattern, value, expected):
     model = AbstractSportOrgMemoryModel
     check = model.compile_regex(translate('contain'), pattern)
-    result = model.match(check, value)
+    result = model.match_value(check, str(value))
     assert result == expected
 
 
@@ -72,7 +72,7 @@ def test_filter_contain_to_action(pattern, value, expected):
 def test_filter_doesnt_contain_to_action(pattern, value, expected):
     model = AbstractSportOrgMemoryModel
     check = model.compile_regex(translate("doesn't contain"), pattern)
-    result = model.match(check, value)
+    result = model.match_value(check, str(value))
     assert result == expected
 
 
@@ -89,5 +89,5 @@ def test_filter_doesnt_contain_to_action(pattern, value, expected):
 def test_filter_wrong_action(pattern, value, expected):
     model = AbstractSportOrgMemoryModel
     check = model.compile_regex(translate('wrong action'), pattern)
-    result = model.match(check, value)
+    result = model.match_value(check, value)
     assert result == expected

@@ -116,7 +116,7 @@ class AbstractSportOrgMemoryModel(QAbstractTableModel):
             i = 0
             while i < len(current_array):
                 value = self.get_item(current_array[i], column)
-                if not self.match(check, value):
+                if not self.match_value(check, str(value)):
                     self.filter_backup.append(current_array.pop(i))
                     i -= 1
                 i += 1
@@ -146,8 +146,8 @@ class AbstractSportOrgMemoryModel(QAbstractTableModel):
         return re.compile(regex_string)
 
     @staticmethod
-    def match(check: re.Pattern, value: str) -> bool:
-        return bool(check.match(str(value)))
+    def match_value(check: re.Pattern, value: str) -> bool:
+        return bool(check.match(value))
 
     def apply_search(self):
         if not self.search:
