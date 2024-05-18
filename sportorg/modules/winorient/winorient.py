@@ -55,7 +55,7 @@ def import_csv(source):
         sportident_card = int(person_dict['sportident_card'])
         if sportident_card and sportident_card in race().person_index_card:
             person_dupl = race().person_index_card[sportident_card]
-            person_dupl.set_card_number(0)
+            person_dupl.change_card(0)
             logging.info(
                 '{}: {} {} {} {}'.format(
                     translate('Delete duplicate card from old person'),
