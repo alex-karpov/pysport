@@ -3,7 +3,7 @@ import logging
 from sportorg.language import translate
 from sportorg.libs.winorient import wo
 from sportorg.models import memory
-from sportorg.models.memory import Qualification
+from sportorg.models.memory import Qualification, race
 from sportorg.modules.winorient.wdb import WinOrientBinary
 
 
@@ -36,16 +36,37 @@ def import_csv(source):
         person_org = memory.find(obj.organizations, name=person_dict['team_name'])
         person_org.contact = person_dict['representative']
 
+        # Remove duplicate cards from existing persons
+        sportident_card = int(person_dict['sportident_card'])
+        if sportident_card and sportident_card in race().person_index_card:
+            person_dupl = race().person_index_card[sportident_card]
+            person_dupl.change_card(0)
+            logging.info(
+                '{}: {} {} {} {}'.format(
+                    translate('Delete duplicate card from old person'),
+                    person_dupl.full_name,
+                    person_dupl.group.name if person_dupl.group else '',
+                    person_dupl.organization.name if person_dupl.organization else '',
+                    person_dupl.card_number,
+                )
+            )
+
         person = memory.Person()
         person.name = person_dict['name']
         person.surname = person_dict['surname']
         person.change_bib(person_dict['bib'])
         person.set_year(person_dict['year'])
-        person.change_card(int(person_dict['sportident_card']))
+        person.change_card(sportident_card)
         person.group = memory.find(obj.groups, name=person_dict['group_name'])
         person.organization = person_org
         person.qual = Qualification(qual_id)
         person.comment = person_dict['comment']
+
+        if 'в/к' in person.comment:
+            person.is_out_of_competition = True
+        if 'лично' in person.comment:
+            person.is_personal = True
+
         obj.persons.append(person)
 
     new_lengths = obj.get_lengths()
