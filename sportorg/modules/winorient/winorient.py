@@ -54,9 +54,9 @@ def import_csv(source):
         person = memory.Person()
         person.name = person_dict['name']
         person.surname = person_dict['surname']
-        person.change_bib(person_dict['bib'])
+        person.set_bib(int(person_dict['bib']))
         person.set_year(person_dict['year'])
-        person.change_card(sportident_card)
+        person.set_card_number(int(person_dict['sportident_card']))
         person.group = memory.find(obj.groups, name=person_dict['group_name'])
         person.organization = person_org
         person.qual = Qualification(qual_id)
@@ -94,7 +94,7 @@ def import_csv(source):
                     person.card_number,
                 )
             )
-            person.card_number = 0
+            person.set_card_number(0)
     if len(persons_dupl_names):
         logging.info('{}'.format(translate('Duplicate names')))
         for person in sorted(persons_dupl_names, key=lambda x: x.full_name):
