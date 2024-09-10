@@ -126,6 +126,10 @@ def _get_person_obj(data, race_data, result=None):
 
         if race_data['settings']['result_processing_mode'] == 'ardf':
             obj['score'] = result['scores_ardf']
+        elif race_data['settings']['result_processing_mode'] == 'scores':
+            obj['score'] = result['rogaine_score']
+            if result['rogaine_penalty'] > 0:
+                obj['penalty'] = str(result['rogaine_penalty'])
 
         obj['result_status'] = (
             RESULT_STATUS[int(result['status'])]
@@ -137,7 +141,10 @@ def _get_person_obj(data, race_data, result=None):
             obj['splits'] = []
             splits = []
             for split in result['splits']:
-                if split['is_correct']:
+                if (
+                    split['is_correct']
+                    or race_data['settings']['live_sending_all_controls'] == True
+                ):
                     splits.append(split)
             for i in range(len(splits)):
                 # fmt: off

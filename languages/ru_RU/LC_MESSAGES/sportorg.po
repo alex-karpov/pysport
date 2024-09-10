@@ -636,11 +636,11 @@ msgstr "Режим присвоения"
 msgid "by time"
 msgstr "по времени"
 
-msgid "by scores"
-msgstr "по баллам"
+msgid "by scores (rogaine)"
+msgstr "по баллам (рогейн)"
 
 msgid "ardf"
-msgstr "ADRF"
+msgstr "ARDF"
 
 msgid "rogain scores"
 msgstr "рогейн (45КП = 4балла, 78КП = 7баллов)"
@@ -650,6 +650,9 @@ msgstr "фиксированные баллы за КП"
 
 msgid "minute penalty"
 msgstr "Штраф за каждую просроченную минуту"
+
+msgid "maximum overrun time"
+msgstr "Макс. превышение контрольного времени"
 
 msgid "no penalty"
 msgstr "штраф не начисляется"
@@ -755,6 +758,12 @@ msgstr "Командные результаты"
 
 msgid "Scores"
 msgstr "Очки"
+
+msgid "Points gained"
+msgstr "Набрано очков"
+
+msgid "Penalty for finishing late"
+msgstr "Штраф за превышение"
 
 msgid "Penalty calculation"
 msgstr "Штраф"
@@ -1523,6 +1532,9 @@ msgstr "Первый КП"
 
 msgid "CP increment"
 msgstr "Инкремент КП"
+
+msgid "Sending the entire contents of the chip"
+msgstr "Отправка всего содержимого чипа"
 
 msgid "Online results sending"
 msgstr "Отправка онлайн результатов"
