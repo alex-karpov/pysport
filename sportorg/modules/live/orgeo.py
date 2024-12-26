@@ -295,7 +295,7 @@ async def create_online_cp(url, data, race_data, log, *, session):
                                 res['finish_time'] // 10
                             ).to_str()
                         status = WinOrientBinary.get_wdb_status(item['status'])
-                        resp = await o.send_online_cp(card_number, code, finish_time)
+                        resp = await o.send_online_cp(card_number, code, finish_time, status)
                         print(
                             f'card={card_number} code={str(code)} finish={finish_time}'
                         )

@@ -426,6 +426,15 @@
         return with0(date.getMinutes()) + ':' + with0(date.getSeconds());
     }
 
+    function to_relay_bib(value) {
+        if (value <= 1000) {
+            return value
+        }
+        var leg = ~~(value/1000);
+        var bib = value % 1000;
+        return bib + '.' + leg;
+    }
+
     function getById(list, id) {
         if (id) {
             for (var _i = 0, list_ = list; _i < list_.length; _i++) {

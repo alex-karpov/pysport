@@ -799,7 +799,7 @@ class Result:
                 return OTime()  # result not found in that day
         return sum_result
 
-    def get_start_time(self):
+    def get_start_time(self) -> OTime:
         if self.person and self.person.group:
             group = self.person.group
             if group.get_type() == RaceType.PURSUIT:
@@ -1116,9 +1116,9 @@ class ResultSportident(Result):
             #     'B': {'37': '45', '31': '35', '46': '50'},
             #     'C': {'40': '42', '58': '54', '50': '56'},
             # }
-            pairs = {  # Монумент Славы, 14 апреля 2024 г.
-                'A': {'41': '59', '56': '54', '46': '57', '47': '45'},
-                'B': {'46': '57', '47': '45', '41': '59', '56': '54'},
+            pairs = {  # Школа №35, 5 октября 2024 г.
+                'A': {'46': '56', '35': '44'},
+                'B': {'39': '53', '34': '56'},
             }
             pairs_on_course = pairs.get(course.name, {})
             # Добавить обратный порядок взятия: {31: 32} -> {31: 32, 32: 31}
@@ -1847,7 +1847,7 @@ class Race(Model):
             # Sort groups as in Groups tab
             order = {group.name: index for index, group in enumerate(self.groups)}
             return_groups = sorted(
-                list(return_groups), key=lambda course: order[group.name]
+                list(return_groups), key=lambda group: order[group.name]
             )
 
             return {
@@ -2054,7 +2054,7 @@ class Race(Model):
         # usual connection via group
         if not ret and person.group:
             if person.group.is_any_course:
-                for course in self.courses:
+                for course in [c for c in self.courses if person.group.name in c.name]:
                     if result.check(course):
                         return course
             else:
@@ -2686,6 +2686,16 @@ class RelayTeam:
             else:
                 return correct_qty
         return correct_qty
+
+    def get_is_team_placed(self):
+        """Is the team taking place? - the team has completed all stages,
+        the status is ok and there are no participants out of competition
+        """
+        return (
+            self.get_is_status_ok()
+            and self.get_is_all_legs_finished()
+            and not self.get_is_out_of_competition()
+        )
 
     def get_is_status_ok(self):
         """get the whole status of team - OK if all laps are OK"""

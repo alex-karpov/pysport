@@ -398,14 +398,25 @@ class ResultChecker:
         If `allow_duplicates` flag is `True`, the function allows duplicate control points
         to be included in the score calculation.
         """
+        NOVOSIBIRSK_VYBOR = False
+        if NOVOSIBIRSK_VYBOR:
+            forbidden_array = ['143', 143, '148', 148]
+
         user_array = []
         score = 0
 
         for cur_split in result.splits:
             code = str(cur_split.code)
-            if code not in user_array or allow_duplicates:
-                user_array.append(code)
-                score += ResultChecker.get_control_score(code)
+            if NOVOSIBIRSK_VYBOR:
+                if score >= 13:
+                    continue
+                if code not in set(user_array + forbidden_array) or allow_duplicates:
+                    user_array.append(code)
+                    score += ResultChecker.get_control_score(code)
+            else:
+                if code not in user_array or allow_duplicates:
+                    user_array.append(code)
+                    score += ResultChecker.get_control_score(code)
 
         return score
 
