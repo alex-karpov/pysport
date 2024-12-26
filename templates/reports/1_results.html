@@ -38,6 +38,7 @@
                     org: (result.person.organization && String(result.person.organization.name).slice(0, MAX_ORG_NAME)) || '',
                     qual: Qualification[result.person.qual],
                     bib: result.person.bib,
+                    bib_show: isRelay ? to_relay_bib(result.person.bib) : result.person.bib,
                     year: result.person.birth_date ? (new Date(result.person.birth_date)).getFullYear() : '',
                     penalty_time: toHHMMSS(result.penalty_time),
                     penalty_laps: result.penalty_laps,
@@ -45,7 +46,7 @@
                     rogaine_score: result.rogaine_score,
                     rogaine_penalty: result.rogaine_penalty,
                     rogaine_points_earned: result.rogaine_score + result.rogaine_penalty,
-                    result: result.result_current,
+                    result: result.result_current.replace('п.п.', 'пп'),
                     result_relay: result.result_relay,
                     result_msec: result.result_msec,
                     diff: isRogaine || isArdf ? result.diff_scores : toHHMMSS(result.diff),
@@ -220,6 +221,7 @@
                     org: (result.person.organization && String(result.person.organization.name).slice(0, MAX_ORG_NAME)) || '',
                     qual: Qualification[result.person.qual],
                     bib: result.person.bib,
+                    bib_show: isRelay ? to_relay_bib(result.person.bib) : result.person.bib,
                     year: result.person.birth_date ? (new Date(result.person.birth_date)).getFullYear() : '',
                     penalty_time: toHHMMSS(result.penalty_time),
                     penalty_laps: result.penalty_laps,
@@ -227,7 +229,7 @@
                     rogaine_score: result.rogaine_score,
                     rogaine_penalty: result.rogaine_penalty,
                     rogaine_points_earned: result.rogaine_score + result.rogaine_penalty,
-                    result: result.result_current,
+                    result: result.result_current.replace('п.п.', 'пп'),
                     result_msec: result.result_msec,
                     diff: isRogaine || isArdf ? result.diff_scores : toHHMMSS(result.diff),
                     place: result.place,
@@ -453,12 +455,13 @@
     }
 
     function getRankingByGroup(group) {
-        var rankingBlock = document.createElement('span');
+        var rankingBlock = document.createElement('pre');
         var ranking = group.ranking;
         if (ranking && ranking.is_active && ranking.rank_scores > 0) {
             var text = 'Ranking, scores: ' + ranking.rank_scores.toFixed(0);
             rankingBlock.appendChild(document.createTextNode(text));
 
+            rank_min_place = 1;
             for (var _i = 0; _i < ranking.rank.length; _i++) {
                 var rank = ranking.rank[_i];
                 if (rank.is_active) {
@@ -473,8 +476,6 @@
                             if (rank.percent > 0) {
                                 text += ' (' + rank.percent + '%)';
                             }
-                            rankingBlock.appendChild(document.createElement("br"));
-                            rankingBlock.appendChild(document.createTextNode(text));
                         }
                     }
                 }
@@ -484,6 +485,7 @@
             var text = 'Rank was not calculated';
             rankingBlock.appendChild(document.createTextNode(text));
         }
+        rankingBlock.appendChild(document.createTextNode(text));
 
         return rankingBlock;
     }
