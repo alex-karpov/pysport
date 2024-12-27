@@ -4,23 +4,9 @@
 {% block content %}
 <div class="text-center">
     <h3>{{ race.data.description }} <br>{{ race.data.start_datetime|date }} {{ race.data.location }}</h3>
-    <h2>ПРОТОКОЛ РЕЗУЛЬТАТОВ</h2>
+    <h2>RESULT LIST</h2>
 </div>
 <div id="results-tables"></div>
-<div>
-    <table class="empty-table">
-        <tr>
-            <td><b>Главный судья:</b></td>
-            <td width="150px"></td>
-            <td><b>{{ race.data.chief_referee }}</b></td>
-        </tr>
-        <tr>
-            <td><b>Главный секретарь:</b></td>
-            <td width="150px"></td>
-            <td><b>{{ race.data.secretary }}</b></td>
-        </tr>
-    </table>
-</div>
 {% raw %}
 <style>
     table.table-split {
@@ -41,7 +27,7 @@
 
     function getResultsByGroup(group, count) {
         count = +count || 0;
-        var isRelay = group.__type !== null ? group.__type === 3 : race.data.race_type === 3;
+        var isRelay = group.__type ? group.__type === 3 : race.data.race_type === 3;
         var results = [];
         for (var _i = 0, _a = race.results; _i < _a.length; _i++) {
             var result = _a[_i];
@@ -50,35 +36,31 @@
                     index: 0,
                     name: (result.person.surname + ' ' + result.person.name).slice(0, MAX_PERSON_NAME),
                     org: (result.person.organization && String(result.person.organization.name).slice(0, MAX_ORG_NAME)) || '',
-                    qual: result.person.qual ? Qualification[result.person.qual] : '',
+                    qual: Qualification[result.person.qual],
                     bib: result.person.bib,
-                    bib_show: isRelay ? to_relay_bib(result.person.bib) : result.person.bib,
                     year: result.person.birth_date ? (new Date(result.person.birth_date)).getFullYear() : '',
-                    penalty_time: toMMSS(result.penalty_time),
+                    penalty_time: toHHMMSS(result.penalty_time),
                     penalty_laps: result.penalty_laps,
                     scores_ardf: result.scores_ardf,
                     rogaine_score: result.rogaine_score,
                     rogaine_penalty: result.rogaine_penalty,
                     rogaine_points_earned: result.rogaine_score + result.rogaine_penalty,
-                    result: result.result_current.replace('п.п.', 'пп'),
+                    result: result.result_current,
                     result_relay: result.result_relay,
                     result_msec: result.result_msec,
-                    diff: isRogaine || isArdf ? result.diff_scores : toMMSS(result.diff),
+                    diff: isRogaine || isArdf ? result.diff_scores : toHHMMSS(result.diff),
                     place: result.place,
                     status: result.status,
                     scores: result.scores,
-                    place_show: result.person.is_out_of_competition ? 'в/к' : result.place === 0 ? '' : result.place === -1 ? '' : result.place,
+                    place_show: result.person.is_out_of_competition ? 'o/c' : result.place === 0 ? '' : result.place === -1 ? '' : result.place,
                     is_out_of_competition: result.person.is_out_of_competition,
                     speed: result.speed,
-                    speed_kmh:  group.course ? (group.course.length * 3600 / result.result_msec).toFixed(1) + 'км/ч' : '',
-                    data: result,
-                    order: result.order
+                    data: result
                 };
                 if (result.status !== 1) {
                     r.diff = '';
                     r.place_show = '';
                     r.speed = '';
-                    r.speed_kmh = '';
                     r.scores = '';
                     r.rogaine_points_earned = '';
                     r.rogaine_penalty = '';
@@ -117,7 +99,7 @@
                         var tblF = document.createElement('table');
                         tblF.className = 'table-split';
                         tblF.appendChild(getTrBlock(toHHMMSS(finishMsec), 0));
-                        var place_str = r.place > 0 ? r.place : 'в/к';
+                        var place_str = r.place > 0 ? r.place : 'o/c';
                         tblF.appendChild(getTrBlock(toHHMMSS(r.result_msec) + ' (' + place_str + ')', r.place));
                         r.finish_split = tblF;
                     }
@@ -157,11 +139,16 @@
         }
         results.sort(function (a, b) {
             if (isRelay) {
-
-                if (a.order === b.order) {
+                if (a.place < 1) {
+                    return 1
+                }
+                if (b.place < 1) {
+                    return -1
+                }
+                if (a.place === b.place) {
                     return ~~(a.bib / 1000) - ~~(b.bib / 1000)
                 }
-                return a.order - b.order
+                return a.place - b.place
 
             } else {
                 if (a.status !== 1 && b.status !== 1) {
@@ -216,7 +203,7 @@
     }
 	function getResultsByCourse(group, count) {
 		count = +count || 0;
-        var isRelay = group.__type !== null ? group.__type === 3 : race.data.race_type === 3;
+        var isRelay = group.__type ? group.__type === 3 : race.data.race_type === 3;
         var results = [];
         var splits_recalc_times = {};
         var splits_recalc_times_total = {};
@@ -233,24 +220,22 @@
                     org: (result.person.organization && String(result.person.organization.name).slice(0, MAX_ORG_NAME)) || '',
                     qual: Qualification[result.person.qual],
                     bib: result.person.bib,
-                    bib_show: isRelay ? to_relay_bib(result.person.bib) : result.person.bib,
                     year: result.person.birth_date ? (new Date(result.person.birth_date)).getFullYear() : '',
-                    penalty_time: toMMSS(result.penalty_time),
+                    penalty_time: toHHMMSS(result.penalty_time),
                     penalty_laps: result.penalty_laps,
                     scores_ardf: result.scores_ardf,
                     rogaine_score: result.rogaine_score,
                     rogaine_penalty: result.rogaine_penalty,
                     rogaine_points_earned: result.rogaine_score + result.rogaine_penalty,
-                    result: result.result_current.replace('п.п.', 'пп'),
+                    result: result.result_current,
                     result_msec: result.result_msec,
-                    diff: isRogaine || isArdf ? result.diff_scores : toMMSS(result.diff),
+                    diff: isRogaine || isArdf ? result.diff_scores : toHHMMSS(result.diff),
                     place: result.place,
                     status: result.status,
                     scores: result.scores,
-                    place_show: result.person.is_out_of_competition ? 'в/к' : result.place === 0 ? '' : result.place === -1 ? '' : result.place,
+                    place_show: result.person.is_out_of_competition ? 'o/c' : result.place === 0 ? '' : result.place === -1 ? '' : result.place,
                     is_out_of_competition: result.person.is_out_of_competition,
                     speed: result.speed,
-                    speed_kmh:  (result.person.group.course.length * 3600 / result.result_msec).toFixed(1) + 'км/ч',
 					group: result.person.group.name,
                     data: result
                 };
@@ -258,7 +243,6 @@
                     r.diff = '';
                     r.place_show = '';
                     r.speed = '';
-                    r.speed_kmh = '';
                     r.scores = '';
                     r.rogaine_points_earned = '';
                     r.rogaine_penalty = '';
@@ -314,10 +298,16 @@
         }
         results.sort(function (a, b) {
             if (isRelay) {
-                if (a.order === b.order) {
+                if (a.place < 1) {
+                    return 1
+                }
+                if (b.place < 1) {
+                    return -1
+                }
+                if (a.place === b.place) {
                     return ~~(a.bib / 1000) - ~~(b.bib / 1000)
                 }
-                return a.order - b.order
+                return a.place - b.place
             } else {
                 if (a.status !== 1 && b.status !== 1) {
                     return STATUS_PRIORITY.indexOf(a.status) - STATUS_PRIORITY.indexOf(b.status);
@@ -380,7 +370,7 @@
                 if (isArdf) return res.scores_ardf;
                 return 0
             }
-			var newplace = 1;
+            var newplace = 1;
 			var doubleplace = -1;
 			var best_result_msec = results[0] ? results[0].result_msec : 0;
 			var last_result_msec = results[0] ? results[0].result_msec : 0;
@@ -463,72 +453,62 @@
     }
 
     function getRankingByGroup(group) {
-        var rankingBlock = document.createElement('pre');
+        var rankingBlock = document.createElement('span');
         var ranking = group.ranking;
         if (ranking && ranking.is_active && ranking.rank_scores > 0) {
-            var text = 'Квалификационный уровень (баллы): ' + ranking.rank_scores.toFixed(0);
+            var text = 'Ranking, scores: ' + ranking.rank_scores.toFixed(0);
+            rankingBlock.appendChild(document.createTextNode(text));
 
-            rank_min_place = 1;
             for (var _i = 0; _i < ranking.rank.length; _i++) {
                 var rank = ranking.rank[_i];
                 if (rank.is_active) {
                     if (rank.max_place > 0) {
-                        text += '; '
-                        text += Qualification[rank.qual] + ' - ' + rank_min_place + (rank_min_place == rank.max_place ? '' : '-' + rank.max_place) + ' место';
-                        rank_min_place = Number(rank.max_place) + 1;
+                        var text = Qualification[rank.qual] + ' - up to ' + rank.max_place + ' place';
+                        rankingBlock.appendChild(document.createElement("br"));
+                        rankingBlock.appendChild(document.createTextNode(text));
                     }
                     else {
-                        if (rank.min_scores && rank.min_scores > 0) {
-                            text += '; '
-                            text += Qualification[rank.qual] + ' - ' + rank.min_scores + ' очк.';
+                        if (rank.max_time > 0) {
+                            var text = Qualification[rank.qual] + ' - ' + toHHMMSS(rank.max_time);
                             if (rank.percent > 0) {
                                 text += ' (' + rank.percent + '%)';
                             }
-                        }
-                        else {
-                            if (rank.max_time > 0) {
-                                text += '; '
-                                text += Qualification[rank.qual] + ' - ' + toHHMMSS(rank.max_time);
-                                if (rank.percent > 0) {
-                                    text += ' (' + rank.percent + '%)';
-                                }
-                            }
+                            rankingBlock.appendChild(document.createElement("br"));
+                            rankingBlock.appendChild(document.createTextNode(text));
                         }
                     }
                 }
             }
         }
         else {
-            var text = 'Ранг не подсчитывался';
+            var text = 'Rank was not calculated';
+            rankingBlock.appendChild(document.createTextNode(text));
         }
-        rankingBlock.appendChild(document.createTextNode(text));
 
         return rankingBlock;
     }
 
     var Fields = {
         fields: [
-            {key: 'index', title: '№', size: 4, align_right: true},
-            {key: 'group', title: 'Группа', size: 10, active: false},
-            {key: 'name', title: 'Фамилия, имя', size: 26},
-            {key: 'org', title: 'Коллектив', size: 21},
-            {key: 'qual', title: 'Квал', size: 4},
-            {key: 'year', title: 'ГР ', size: 4, align_right: true},
-            {key: 'bib_show', title: 'Номер', size: 5, align_right: true},
-            {key: 'penalty_time', title: 'Штраф', size: 6, active: false},
-            {key: 'penalty_laps', title: 'Штраф', size: 6, align_right: true, active: false},
-            {key: 'scores_ardf', title: 'КП', size: 3, align_right: true, active: isArdf},
-            {key: 'rogaine_points_earned', title: 'Очки', size: 4, align_right: true, active: isRogaine},
-            {key: 'rogaine_penalty', title: 'Штр.', size: 4, align_right: true, active: isRogaine},
-            {key: 'rogaine_score', title: 'Итог', size: 4, align_right: true, active: isRogaine},
-            {key: 'result', title: 'Результат', size: 13},
-            {key: 'result_relay', title: 'Ком. рез-т', size: 13},
-            {key: 'diff', title: 'Отставан', size: 8, active: !isArdf && !isRogaine},
-            {key: 'speed', title: 'Темп', size: 8, align_right: true, active: false},
-            {key: 'speed_kmh', title: 'Скорость', size: 8, align_right: true, active: false},
-            {key: 'place_show', title: 'Место', size: 5, align_right: true},
-            {key: 'scores', title: 'Очки', size: 4, align_right: true, active: false},
-            {key: 'all_splits', title: 'Сплиты', active: false}
+            {key: 'index', title: '№', size: 4},
+            {key: 'group', title: 'Class', size: 10, active: false},
+            {key: 'name', title: 'Name', size: 30},
+            {key: 'org', title: 'Orgznization', size: 20},
+            {key: 'year', title: 'Year', size: 5},
+            {key: 'bib', title: 'Bib', size: 6},
+            {key: 'penalty_time', title: 'Penalty', size: 9, active: false},
+            {key: 'penalty_laps', title: 'Penalty,l', size: 9, active: false},
+            {key: 'scores_ardf', title: 'ARDF', size: 4, active: isArdf},
+            {key: 'rogaine_points_earned', title: 'Total', size: 5, active: isRogaine},
+            {key: 'rogaine_penalty', title: 'Pen.', size: 4, active: isRogaine},
+            {key: 'rogaine_score', title: 'Pts', size: 4, active: isRogaine},
+            {key: 'result', title: 'Result', size: 14},
+            {key: 'result_relay', title: 'Team result', size: 14},
+            {key: 'diff', title: 'Diff', size: 11, active: !isArdf && !isRogaine},
+            {key: 'speed', title: 'Pace', size: 12, active: false},
+            {key: 'place_show', title: 'Place', size: 6},
+            {key: 'scores', title: 'Scores', size: 5, active: false},
+            {key: 'all_splits', title: 'Splits', active: false}
         ],
         active: function (key, val) {
             for (var _i = 0, _a = this.fields; _i < _a.length; _i++) {
@@ -569,7 +549,7 @@
                 this.getField('all_splits').active = location.href.indexOf('all_splits=1') > -1;
                 this.getField('scores').active = location.href.indexOf('scores=1') > -1;
                 this.getField('penalty_time').active = location.href.indexOf('penalty_time=1') > -1;
-                this.getField('penalty_laps').active = location.href.indexOf('penalty_laps=1') > -1;
+
                 this.getField('result_relay').active = isRelay
             } catch (e){}
             return this;
@@ -581,11 +561,7 @@
     };
 
     try {
-        store.splitsShow = (
-            location.href.indexOf('s_splits=1') > -1 ||
-            location.href.indexOf('&splits=1') > -1 ||
-            location.href.indexOf('?splits=1') > -1
-        );
+        store.splitsShow = location.href.indexOf('s_splits=1') > -1;
         store.rankingShow = location.href.indexOf('ranking=1') > -1;
         store.showProtocolByCourse = location.href.indexOf('by_course=1') > -1;
     } catch (e) {}
@@ -617,10 +593,10 @@
             titleBlock.id = groupName;
             var groupTitle = groupName;
             if (course && course.controls && course.controls.length){
-                groupTitle += ', ' + course.controls.length + ' КП';
+                groupTitle += ', ' + course.controls.length + ' controls';
             }
             if (course && course.length){
-                groupTitle += ', ' + course.length / 1000 + ' км';
+                groupTitle += ', ' + course.length / 1000 + ' km';
             }
             titleBlock.appendChild(document.createTextNode(groupTitle));
             resultBlock.appendChild(titleBlock);
@@ -655,8 +631,7 @@
             by_course: store.showProtocolByCourse ? 1 : 0,
             all_splits: Fields.isActive('all_splits') ? 1 : 0,
             scores: Fields.isActive('scores') ? 1 : 0,
-            penalty_time: Fields.isActive('penalty_time') ? 1 : 0,
-            penalty_laps: Fields.isActive('penalty_laps') ? 1 : 0
+            penalty_time: Fields.isActive('penalty_time') ? 1 : 0
         };
         var queryString = '?';
         Object.keys(query).forEach(function (key) {
@@ -715,7 +690,7 @@
 
     new SettingsGenerator([
         {
-            title: 'Ссылки на группы',
+            title: 'Classes links',
             value: !!store.showLinkForGroups,
             change: function (checked) {
                 store.showLinkForGroups = checked;
@@ -723,7 +698,7 @@
             }
         },
         {
-            title: 'Протокол по дистанциям',
+            title: 'Results by courses',
             value: !!store.showProtocolByCourse,
             change: function (checked) {
                 store.showProtocolByCourse = checked;
@@ -731,7 +706,7 @@
             }
         },
         {
-            title: 'Табличный вид',
+            title: 'Table view',
             value: !!store.tableView,
             change: function (checked) {
                 store.tableView = checked;
@@ -739,15 +714,7 @@
             }
         },
         {
-            title: 'Квалификация',
-            value: Fields.isActive('qual'),
-            change: function (checked) {
-                Fields.active('qual', checked);
-                render()
-            }
-        },
-        {
-            title: 'Номер',
+            title: 'Bib',
             value: Fields.isActive('bib'),
             change: function (checked) {
                 Fields.active('bib', checked);
@@ -755,7 +722,7 @@
             }
         },
         {
-            title: 'Штрафное время',
+            title: 'Penalty time',
             value: Fields.isActive('penalty_time'),
             change: function (checked) {
                 Fields.active('penalty_time', checked);
@@ -763,7 +730,7 @@
             }
         },
         {
-            title: 'Кол-во штрафных кругов',
+            title: 'Penalty laps',
             value: Fields.isActive('penalty_laps'),
             change: function (checked) {
                 Fields.active('penalty_laps', checked);
@@ -771,7 +738,7 @@
             }
         },
         {
-            title: 'Отставание',
+            title: 'Diff',
             value: Fields.isActive('diff'),
             change: function (checked) {
                 Fields.active('diff', checked);
@@ -779,7 +746,7 @@
             }
         },
         {
-            title: 'Темп',
+            title: 'Pace',
             value: Fields.isActive('speed'),
             change: function (checked) {
                 Fields.active('speed', checked);
@@ -787,15 +754,7 @@
             }
         },
         {
-            title: 'Скорость км/ч',
-            value: Fields.isActive('speed_kmh'),
-            change: function (checked) {
-                Fields.active('speed_kmh', checked);
-                render()
-            }
-        },
-        {
-            title: 'Сплиты (заданное направление)',
+            title: 'Splits (no forking)',
             value: !!store.splitsShow,
             change: function (checked) {
                 store.splitsShow = checked;
@@ -803,7 +762,7 @@
             }
         },
         {
-            title: 'Сплиты (все отметки)',
+            title: 'Splits (all)',
             value: Fields.isActive('all_splits'),
             change: function (checked) {
                 Fields.active('all_splits', checked);
@@ -811,7 +770,7 @@
             }
         },
         {
-            title: 'Очки',
+            title: 'Scores',
             value: Fields.isActive('scores'),
             change: function (checked) {
                 Fields.active('scores', checked);
@@ -819,7 +778,7 @@
             }
         },
         {
-            title: 'Выполнение',
+            title: 'Ranking (Russian)',
             value: store.rankingShow,
             change: function (checked) {
                 store.rankingShow = checked;
@@ -827,9 +786,9 @@
             }
         },
         {
-            title: 'Показать первые: ',
+            title: 'Show first: ',
             value: [
-                {text: 'Все результаты', value: 0},
+                {text: 'All', value: 0},
                 {text: '1', value: 1},
                 {text: '3', value: 3},
                 {text: '4', value: 4},
@@ -843,7 +802,7 @@
             }
         },
         {
-            title: 'Печатать на отдельной странице',
+            title: 'Each class from new page',
             value: false,
             change: function (checked) {
                 store.newPage = checked;
@@ -851,7 +810,7 @@
             }
         },
         {
-            title: 'Автоскролл',
+            title: 'Autoscroll',
             value: Scrolling.enabled,
             change: function (checked) {
                 Scrolling.enabled = checked;

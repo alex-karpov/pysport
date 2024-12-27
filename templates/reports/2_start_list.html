@@ -10,30 +10,16 @@
 <div class="text-center">
     <h3>{{ race.data.description }} <br>
     {{ race.data.start_datetime|date }} {{ race.data.location }}</h3>
-    <h2>ПРОТОКОЛ СТАРТА</h2>
+    <h2>START LIST</h2>
 </div>
 <div id="start-list-tables"></div>
-<div>
-    <table class="empty-table">
-        <tr>
-            <td><b>Главный судья:</b></td>
-            <td width="150px"></td>
-            <td><b>{{ race.data.chief_referee }}</b></td>
-        </tr>
-        <tr>
-            <td><b>Главный секретарь:</b></td>
-            <td width="150px"></td>
-            <td><b>{{ race.data.secretary }}</b></td>
-        </tr>
-    </table>
-</div>
 {% raw %}
 <script>
     var race = {% endraw %}{{race|tojson}}{%raw %};
     racePreparation(race);
 
     function getStartListByGroup(group) {
-        var isRelay = group.__type !== null ? group.__type === 3 : race.data.race_type === 3;
+        var isRelay = group.__type ? group.__type === 3 : race.data.race_type === 3;
         var results = [];
         for (var _i = 0, _a = race.persons; _i < _a.length; _i++) {
             var person = _a[_i];
@@ -44,11 +30,11 @@
                     org: (person.organization && String(person.organization.name).slice(0, MAX_ORG_NAME)) || '',
                     qual: Qualification[person.qual],
                     bib: person.bib,
-                    bib_show: isRelay ? to_relay_bib(person.bib) : person.bib,
                     card_number: person.card_number,
                     year: person.birth_date ? (new Date(person.birth_date)).getFullYear() : '',
                     start: toHHMMSS(person.start_time),
-                    start_time: person.start_time
+                    start_time: person.start_time,
+					comment: person.comment
                 });
             }
         }
@@ -91,14 +77,14 @@
 
     var Fields = {
         fields: [
-            {key: 'index', title: '№', size: 4, align_right: true},
-            {key: 'name', title: 'Фамилия, имя', size: 26},
-            {key: 'org', title: 'Коллектив', size: 21},
-            {key: 'qual', title: 'Квал', size: 4},
-            {key: 'year', title: 'ГР ', size: 4, align_right: true},
-            {key: 'bib_show', title: 'Номер', size: 5, align_right: true},
-            {key: 'start', title: 'Старт  ', size: 10, align_right: true},
-            {key: 'card_number', title: 'Чип  ', size: 9, align_right: true}
+            {key: 'index', title: '№', size: 4},
+            {key: 'name', title: 'Name', size: 30},
+            {key: 'org', title: 'Fed', size: 20},
+            {key: 'year', title: 'Year', size: 5},
+            {key: 'bib', title: 'Bib', size: 6},
+            {key: 'card_number', title: 'Card1', size: 11},
+			{key: 'comment', title: 'Card2', size: 11},
+            {key: 'start', title: 'Start', size: 13}
         ],
         active: function (key, val) {
             for (var _i = 0, _a = this.fields; _i < _a.length; _i++) {
@@ -127,9 +113,7 @@
         }
     }.init();
 
-    var store = {
-        showLinkForGroups: true
-    };
+    var store = {};
 
     function render() {
         var resultBlock = document.getElementById('start-list-tables');
@@ -140,9 +124,7 @@
             titleBlock.id = group.name;
             titleBlock.appendChild(document.createTextNode(group.name));
             resultBlock.appendChild(titleBlock);
-            if (store.showLinkForGroups) {
-                resultBlock.appendChild(getGroupsBlockElement(race));
-            }
+            resultBlock.appendChild(getGroupsBlockElement(race));
             if (store.tableView) {
                 resultBlock.appendChild(new TableGenerator(getStartListByGroup(group), Fields.fields).getTable({className: 'sportorg-table'}));
             } else {
@@ -194,15 +176,7 @@
 
     new SettingsGenerator([
         {
-            title: 'Ссылки на группы',
-            value: !!store.showLinkForGroups,
-            change: function (checked) {
-                store.showLinkForGroups = checked;
-                render()
-            }
-        },
-        {
-            title: 'Табличный вид',
+            title: 'Table view',
             value: !!store.tableView,
             change: function (checked) {
                 store.tableView = checked;
@@ -210,7 +184,7 @@
             }
         },
         {
-            title: 'Номер',
+            title: 'Bib',
             value: Fields.isActive('bib'),
             change: function (checked) {
                 Fields.active('bib', checked);
@@ -218,7 +192,7 @@
             }
         },
         {
-            title: 'Номер чипа',
+            title: 'Card number',
             value: Fields.isActive('card_number'),
             change: function (checked) {
                 Fields.active('card_number', checked);
@@ -226,7 +200,7 @@
             }
         },
         {
-            title: 'Автоскролл',
+            title: 'Autoscroll',
             value: Scrolling.enabled,
             change: function (checked) {
                 Scrolling.enabled = checked;

@@ -21,6 +21,9 @@ msgstr ""
 msgid "About"
 msgstr "О нас"
 
+msgid "Version"
+msgstr "Версия"
+
 msgid "Contributors"
 msgstr "Разработчики"
 
@@ -227,6 +230,9 @@ msgstr "Стартовый взнос"
 
 msgid "Type"
 msgstr "Тип"
+
+msgid "Best team placing"
+msgstr "Международный принцип"
 
 msgid "Rank calculation"
 msgstr "Выполнение разрядов"
@@ -600,8 +606,8 @@ msgstr "Из протокола"
 msgid "Start station"
 msgstr "Стартовая станция"
 
-msgid "Control point"
-msgstr "Контрольный пункт"
+msgid "Control point (0 – any)"
+msgstr "Контрольный пункт (0 – любой)"
 
 msgid "Start gate"
 msgstr "Стартовая калитка"
@@ -1661,3 +1667,12 @@ msgstr "Открыть файл финиша orgeo.ru, CSV (https://orgeo.ru/eve
 
 msgid "Miss penalty lap"
 msgstr "Пропущен штрафной круг"
+
+msgid "Select the templates directory"
+msgstr "Выбрать директорию с шаблонами"
+
+msgid "Open the templates directory"
+msgstr "Открыть директорию с шаблонами"
+
+msgid "Compress files to gzip"
+msgstr "Сохранять файлы в формате gzip"

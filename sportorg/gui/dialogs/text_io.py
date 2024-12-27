@@ -20,29 +20,29 @@ from sportorg.utils.time import hhmmss_to_time
 
 def get_value_options():
     return [
-        translate('Start'),
-        translate('Finish'),
-        translate('Result'),
-        translate('Credit'),
-        translate('Penalty time'),
-        translate('Penalty legs'),
-        translate('Card number'),
-        translate('Last name'),
-        translate('First name'),
-        translate('Year of birth'),
-        translate('Group'),
-        translate('Team'),
-        translate('Qualification'),
-        translate('Bib'),
-        translate('Comment'),
-        translate('Start group'),
-        translate('IOF id'),
-        translate('National id'),
+        translate("Start"),
+        translate("Finish"),
+        translate("Result"),
+        translate("Credit"),
+        translate("Penalty time"),
+        translate("Penalty legs"),
+        translate("Card number"),
+        translate("Last name"),
+        translate("First name"),
+        translate("Year of birth"),
+        translate("Group"),
+        translate("Team"),
+        translate("Qualification"),
+        translate("Bib"),
+        translate("Comment"),
+        translate("Start group"),
+        translate("IOF id"),
+        translate("National id"),
     ]
 
 
 def get_readonly_options():
-    return [translate('Result')]
+    return [translate("Result")]
 
 
 class TextExchangeDialog(QDialog):
@@ -128,10 +128,10 @@ class TextExchangeDialog(QDialog):
 
         button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.button_ok = button_box.button(QDialogButtonBox.Ok)
-        self.button_ok.setText(translate('OK'))
+        self.button_ok.setText(translate("OK"))
         self.button_ok.clicked.connect(self.accept)
         self.button_cancel = button_box.button(QDialogButtonBox.Cancel)
-        self.button_cancel.setText(translate('Cancel'))
+        self.button_cancel.setText(translate("Cancel"))
         self.button_cancel.clicked.connect(self.reject)
 
         self.layout.addWidget(widget)
@@ -148,19 +148,19 @@ class TextExchangeDialog(QDialog):
         pass
 
     def retranslate_ui(self, text_io):
-        text_io.setWindowTitle(translate('Dialog'))
-        self.value_group_box.setTitle(translate('Values'))
-        self.id_label.setText(translate('Identifier'))
-        self.bib_radio_button.setText(translate('Bib'))
-        self.name_radio_button.setText(translate('Person name'))
-        self.value_label.setText(translate('Value'))
-        self.separator_group_box.setTitle(translate('Separator'))
-        self.space_radio_button.setText(translate('space'))
-        self.tab_radio_button.setText(translate('tab'))
-        self.semicolon_radio_button.setText(translate('semicolon'))
-        self.custom_radio_button.setText(translate('custom'))
-        self.options_group_box.setTitle(translate('Options'))
-        self.text_edit.setPlainText('')
+        text_io.setWindowTitle(translate("Dialog"))
+        self.value_group_box.setTitle(translate("Values"))
+        self.id_label.setText(translate("Identifier"))
+        self.bib_radio_button.setText(translate("Bib"))
+        self.name_radio_button.setText(translate("Person name"))
+        self.value_label.setText(translate("Value"))
+        self.separator_group_box.setTitle(translate("Separator"))
+        self.space_radio_button.setText(translate("space"))
+        self.tab_radio_button.setText(translate("tab"))
+        self.semicolon_radio_button.setText(translate("semicolon"))
+        self.custom_radio_button.setText(translate("custom"))
+        self.options_group_box.setTitle(translate("Options"))
+        self.text_edit.setPlainText("")
 
         self.get_text_wrapper()
 
@@ -175,9 +175,9 @@ class TextExchangeDialog(QDialog):
 
     def get_text_wrapper(self):
         try:
-            index = 'bib'
+            index = "bib"
             if self.name_radio_button.isChecked():
-                index = 'person name'
+                index = "person name"
 
             key = self.value_combo_box.currentText()
 
@@ -188,16 +188,16 @@ class TextExchangeDialog(QDialog):
             else:
                 self.button_ok.setDisabled(False)
 
-            if key == translate('Finish'):
+            if key == translate("Finish"):
                 self.option_creating_new_result_checkbox.setDisabled(False)
             else:
                 self.option_creating_new_result_checkbox.setDisabled(True)
 
-            separator = ' '
+            separator = " "
             if self.tab_radio_button.isChecked():
-                separator = '\t'
+                separator = "\t"
             elif self.semicolon_radio_button.isChecked():
-                separator = ';'
+                separator = ";"
             elif self.custom_radio_button.isChecked():
                 separator = self.custom_edit.text()
 
@@ -208,32 +208,32 @@ class TextExchangeDialog(QDialog):
     def accept(self, *args, **kwargs):
         affected_objects = []
         try:
-            index_type = 'bib'
+            index_type = "bib"
             if self.name_radio_button.isChecked():
-                index_type = 'person name'
+                index_type = "person name"
 
             key = self.value_combo_box.currentText()
 
-            separator = ' '
+            separator = " "
             if self.tab_radio_button.isChecked():
-                separator = '\t'
+                separator = "\t"
             elif self.semicolon_radio_button.isChecked():
-                separator = ';'
+                separator = ";"
             elif self.custom_radio_button.isChecked():
                 separator = self.custom_edit.text()
 
             text = self.text_edit.toPlainText()
-            lines = text.split('\n')
+            lines = text.split("\n")
             success_count = 0
             for i in lines:
                 arr = i.split(separator)
                 if len(arr) > 1:
                     value = arr[-1]
                     index = arr[0]
-                    if separator == ' ' and len(arr) > 2:
-                        if index_type == 'person name':
+                    if separator == " " and len(arr) > 2:
+                        if index_type == "person name":
                             index += separator + arr[1]
-                        value = ' '.join(arr[1:])
+                        value = " ".join(arr[1:])
 
                     if value:
                         person = get_person_by_id(index_type, index)
@@ -248,15 +248,15 @@ class TextExchangeDialog(QDialog):
                                 success_count += 1
                                 affected_objects.append(modified_object)
                         else:
-                            logging.debug('text_io: no person found for line ' + i)
+                            logging.debug("text_io: no person found for line " + i)
                     else:
-                        logging.debug('text_io: empty value for line ' + i)
+                        logging.debug("text_io: empty value for line " + i)
             logging.debug(
-                'text_io: processed '
+                "text_io: processed "
                 + str(success_count)
-                + ' from '
+                + " from "
                 + str(len(lines))
-                + ' lines'
+                + " lines"
             )
         except Exception as e:
             logging.error(e)
@@ -271,8 +271,8 @@ class TextExchangeDialog(QDialog):
 
 
 def get_text(key: str, value: str, separator: str):
-    time_accuracy = race().get_setting('time_accuracy', 0)
-    time_rounding_setting = race().get_setting('time_rounding', 'math')
+    time_accuracy = race().get_setting("time_accuracy", 0)
+    time_rounding_setting = race().get_setting("time_rounding", "math")
     time_rounding = TimeRounding[time_rounding_setting]
     ret = []
     for person in race().persons:
@@ -280,26 +280,26 @@ def get_text(key: str, value: str, separator: str):
         if id_str:
             value_str = get_property(person, value, time_accuracy, time_rounding)
             if not value_str:
-                value_str = ''
+                value_str = ""
             ret.append(id_str + separator + value_str)
-    return '\n'.join(ret)
+    return "\n".join(ret)
 
 
 def get_id(person, index):
-    if index == 'bib':
+    if index == "bib":
         return str(person.bib)
-    elif index == 'person name':
+    elif index == "person name":
         return person.full_name
 
-    return ''
+    return ""
 
 
 def get_person_by_id(index, value):
     for i in race().persons:
-        if index == 'bib':
+        if index == "bib":
             if i.bib == int(value):
                 return i
-        elif index == 'person name':
+        elif index == "person name":
             if i.full_name == value:
                 return i
     return None
@@ -311,70 +311,70 @@ def get_property(
     accuracy: int = 0,
     rounding: TimeRounding = TimeRounding.math,
 ):
-    if key == translate('Start'):
+    if key == translate("Start"):
         result = race().find_person_result(person)
         if result:
             return result.get_start_time().round(accuracy, rounding).to_str(accuracy)
         else:
             return person.start_time.round(accuracy, rounding).to_str(accuracy)
-    elif key == translate('Finish'):
+    elif key == translate("Finish"):
         result = race().find_person_result(person)
         if result:
             return result.get_finish_time().round(accuracy, rounding).to_str(accuracy)
-    elif key == translate('Result'):
+    elif key == translate("Result"):
         result = race().find_person_result(person)
         if result:
             return result.get_result()
-    elif key == translate('Credit'):
+    elif key == translate("Credit"):
         result = race().find_person_result(person)
         if result:
             return result.get_credit_time().round(accuracy, rounding).to_str(accuracy)
         else:
             return OTime().round(accuracy, rounding).to_str(accuracy)
-    elif key == translate('Penalty time'):
+    elif key == translate("Penalty time"):
         result = race().find_person_result(person)
         if result:
             return result.get_penalty_time().round(accuracy, rounding).to_str(accuracy)
         else:
             return OTime().round(accuracy, rounding).to_str(accuracy)
-    elif key == translate('Penalty legs'):
+    elif key == translate("Penalty legs"):
         result = race().find_person_result(person)
         if result and result.penalty_laps:
             return str(result.penalty_laps)
-    elif key == translate('Card number'):
+    elif key == translate("Card number"):
         if person.card_number:
             return str(person.card_number)
-    elif key == translate('Last name'):
+    elif key == translate("Last name"):
         return str(person.surname)
-    elif key == translate('First name'):
+    elif key == translate("First name"):
         return str(person.name)
-    elif key == translate('Year of birth'):
+    elif key == translate("Year of birth"):
         return str(person.year)
-    elif key == translate('Group'):
+    elif key == translate("Group"):
         if person.group:
             return person.group.name
-    elif key == translate('Team'):
+    elif key == translate("Team"):
         if person.organization:
             return person.organization.name
-    elif key == translate('Qualification'):
+    elif key == translate("Qualification"):
         return person.qual.get_title()
-    elif key == translate('Bib'):
+    elif key == translate("Bib"):
         return str(person.bib)
-    elif key == translate('Comment'):
+    elif key == translate("Comment"):
         return str(person.comment)
-    elif key == translate('IOF id'):
+    elif key == translate("IOF id"):
         return str(person.world_code)
-    elif key == translate('National id'):
+    elif key == translate("National id"):
         return str(person.national_code)
-    elif key == translate('Start group'):
+    elif key == translate("Start group"):
         return str(person.start_group)
 
-    return ''
+    return ""
 
 
 def set_property(person, key, value, **options):
     modified_object = None
-    if key == translate('Start'):
+    if key == translate("Start"):
         result = race().find_person_result(person)
         if result:
             result.start_time = hhmmss_to_time(value)
@@ -383,53 +383,53 @@ def set_property(person, key, value, **options):
         else:
             person.start_time = hhmmss_to_time(value)
             modified_object = person
-    elif key == translate('Finish'):
+    elif key == translate("Finish"):
         result = race().find_person_result(person)
         if result:
             result.finish_time = hhmmss_to_time(value)
-        elif options.get('creating_new_result', False):
+        elif options.get("creating_new_result", False):
             result = race().new_result(ResultManual)
             result.person = person
             result.bib = person.bib
             result.finish_time = hhmmss_to_time(value)
             race().add_new_result(result)
         modified_object = result
-    elif key == translate('Result'):
+    elif key == translate("Result"):
         pass
-    elif key == translate('Credit'):
+    elif key == translate("Credit"):
         result = race().find_person_result(person)
         if result:
             result.credit_time = hhmmss_to_time(value)
             modified_object = result
-    elif key == translate('Penalty time'):
+    elif key == translate("Penalty time"):
         result = race().find_person_result(person)
         if result:
             result.penalty_time = hhmmss_to_time(value)
             modified_object = result
-    elif key == translate('Penalty legs'):
+    elif key == translate("Penalty legs"):
         result = race().find_person_result(person)
         if result:
             result.penalty_laps = int(value)
             modified_object = result
-    elif key == translate('Card number'):
+    elif key == translate("Card number"):
         race().person_card_number(person, int(value))
         modified_object = person
-    elif key == translate('Last name'):
+    elif key == translate("Last name"):
         person.surname = value
         modified_object = person
-    elif key == translate('First name'):
+    elif key == translate("First name"):
         person.name = value
         modified_object = person
-    elif key == translate('Year of birth'):
+    elif key == translate("Year of birth"):
         if str(value).isdigit():
             person.year = int(value)
             modified_object = person
-    elif key == translate('Group'):
+    elif key == translate("Group"):
         group = race().find_group(value)
         if group:
             person.group = group
             modified_object = person
-    elif key == translate('Team'):
+    elif key == translate("Team"):
         team = race().find_team(value)
         if not team:
             team = Organization()
@@ -437,28 +437,28 @@ def set_property(person, key, value, **options):
             race().organizations.append(team)
         person.organization = team
         modified_object = person
-    elif key == translate('Qualification'):
+    elif key == translate("Qualification"):
         qual = Qualification.get_qual_by_name(value)
         if qual is not None:
             person.qual = qual
             modified_object = person
-    elif key == translate('Bib'):
+    elif key == translate("Bib"):
         if value.isdigit():
             new_bib = int(value)
             person.set_bib(new_bib)
             modified_object = person
-    elif key == translate('Comment'):
+    elif key == translate("Comment"):
         person.comment = value
         modified_object = person
-    elif key == translate('IOF id'):
+    elif key == translate("IOF id"):
         if str(value).isdigit():
             person.world_code = int(value)
             modified_object = person
-    elif key == translate('National id'):
+    elif key == translate("National id"):
         if str(value).isdigit():
             person.national_code = int(value)
             modified_object = person
-    elif key == translate('Start group'):
+    elif key == translate("Start group"):
         if str(value).isdigit():
             person.start_group = int(value)
             modified_object = person

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "sportorg"
-version = "1.6.0"
+version = "1.7.1"
 description = "SportOrg, python, sportident, orienteering"
 authors = ["Danil Akhtarov <daxartio@gmail.com>"]
 
@@ -18,50 +18,27 @@ markupsafe = "2.0.1"
 orjson = "^3.9.5"
 polib = "^1"
 psutil = "^5.9.5"
-pydantic = "^1"
 PySide6 = "^6"
 python-dateutil = "^2"
-python-dotenv = '^0.14'
 pywinusb = "^0"
 requests = "^2"
 sportident = "^1"
 
 [tool.poetry.group.dev.dependencies]
-autoflake = "*"
-black = ">=23"
-commitizen = "^3.12.0"
-cx_Freeze = "^6"
-flake8 = "^6"
-flake8-annotations-complexity = "*"
-flake8-bandit = "*"
-flake8-breakpoint = "*"
-flake8-bugbear = "*"
-flake8-builtins = "*"
-flake8-comprehensions = "*"
-flake8-eradicate = "*"
-flake8-if-expr = "*"
-flake8-isort = "*"
-flake8-logging-format = "*"
-flake8-print = "*"
-flake8-pytest = "*"
-flake8-pytest-style = "*"
-flake8-requirements = "*"
-flake8-return = "*"
+cx_Freeze = ">=6,<8"
 mypy = "^1.4"
-pep8-naming = "*"
-poethepoet = "^0.22.0"
-pylint = "^2.17"
-pytest = "^7.4"
+poethepoet = ">=0.22,<0.31"
+pytest = ">=7.4,<9.0"
 pytest-cov = "*"
 pytest-deadfixtures = "*"
 pytest-mock = "*"
+ruff = "^0.8.0"
 toml = "*"
 types-playsound = "^1.3.1.3"
 types-polib = "^1.2.0.1"
 types-python-dateutil = "^2.8.19.14"
 types-requests = "^2.31.0.2"
 types-six = "^1.16.21.9"
-unify = "*"
 
 [tool.poetry.extras]
 win = ["pywin32", "pyImpinj", "playsound"]
@@ -70,8 +47,47 @@ win = ["pywin32", "pyImpinj", "playsound"]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
+[tool.mypy]
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+no_implicit_optional = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[[tool.mypy.overrides]]
+module = [".venv.*"]
+ignore_errors = true
+
+[tool.coverage.run]
+omit = ["tests/*", "**/__main__.py", "**/.venv/*", "**/site-packages/*"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 42
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --showlocals --verbosity 2"
+log_level = "DEBUG"
+
+[tool.ruff.lint]
+select = []
+ignore = []
+exclude = []
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+
 [tool.poe.env]
-CODE = "tests sportorg"
+CODE = "tests sportorg builder.py"
+SPORTORG_DEBUG = "true"
 
 [tool.poe.tasks.all]
 help = "Run format lint test"
@@ -96,10 +112,9 @@ cmd = "pytest -vv --last-failed"
 [tool.poe.tasks.lint]
 help = "Check code"
 sequence = [
+    {cmd = "poetry check"},
     {ref = "generate-mo"},
-    # {cmd = "flake8 --jobs 4 --statistics --show-source ${CODE}"},
-    # {cmd = "pylint --jobs 1 --rcfile=setup.cfg ${CODE}"},
-    {cmd = "black --skip-string-normalization --line-length=88 --check ${CODE}"},
+    {cmd = "ruff check ${CODE}"},
     {cmd = "pytest --dead-fixtures --dup-fixtures"},
     # {cmd = "mypy ${CODE}"},
 ]
@@ -108,15 +123,16 @@ sequence = [
 help = "Formating code"
 sequence = [
     {ref = "generate-mo"},
-	{cmd = "autoflake --recursive --in-place --remove-all-unused-imports ${CODE}"},
-	{cmd = "isort ${CODE}"},
-	{cmd = "black --skip-string-normalization --line-length=88 ${CODE}"},
-	{cmd = "unify --in-place --recursive ${CODE}"},
+	{cmd = "ruff format ${CODE}"},
 ]
 
 [tool.poe.tasks.generate-mo]
 help = "Generate mo files"
 cmd = "python -m sportorg.language"
+
+[tool.poe.tasks.generate-version]
+help = "Generate version file"
+cmd = "python .github/scripts/version.py"
 
 [tool.poe.tasks.run]
 help = "Run"
