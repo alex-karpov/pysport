@@ -155,9 +155,14 @@ def menu_list():
                     "tabs": list(range(5)),
                     "action": "DuplicateAction",
                 },
-                {"title": translate("Text exchange"), "action": "TextExchangeAction"},
+                {
+                    "title": translate("Text exchange"),
+                    'shortcut': 'Ctrl+T',
+                    "action": "TextExchangeAction",
+                },
                 {
                     "title": translate("Mass edit"),
+                    'shortcut': 'Ctrl+E',
                     "tabs": [0, 2, 4],
                     "action": "MassEditAction",
                 },
@@ -401,6 +406,11 @@ def menu_list():
                             "shortcut": "Ctrl+K",
                             "tabs": [0, 1, 2, 3, 4],
                             "action": "OnlineSendAction",
+                        },
+                        {
+                            'title': translate('Send multiday start list and results'),
+                            'tabs': [0, 1, 2, 3, 4],
+                            'action': 'OnlineMultidaySendAll',
                         },
                     ],
                 },

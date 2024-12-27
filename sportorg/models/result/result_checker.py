@@ -1,5 +1,6 @@
 import logging
 
+from sportorg.common.levenshtein import levenshtein
 from sportorg.common.otime import OTime
 from sportorg.models.constant import StatusComments
 from sportorg.models.memory import (
@@ -147,7 +148,10 @@ class ResultChecker:
 
         if race().get_setting("marked_route_dont_dsq", False):
             # free order, don't penalty for extra cp
-            penalty = ResultChecker.penalty_calculation_free_order(splits, controls)
+            # penalty = ResultChecker.penalty_calculation_free_order(splits, controls)
+            penalty = ResultChecker.penalty_calculation(
+                splits, controls, check_existence=True
+            )
         else:
             # marked route with penalty
             penalty = ResultChecker.penalty_calculation(
@@ -226,6 +230,23 @@ class ResultChecker:
         origin_array = [i.get_number_code() for i in controls]
         res = 0
 
+        irkutsk = False
+        if irkutsk:
+            # В user_array записываются КП маркировки.
+            # Последний КП маркировки - 44 или 144
+            # КП на штрафном круге - 99 (если не отметился на 44/144)
+            user_array = []
+            last_markir = ['44', '144']
+            penalty = ['99']
+            for punch in splits:
+                code = str(punch.code)
+                if code not in penalty:
+                    user_array.append(code)
+                if code in last_markir + penalty:
+                    break
+            # В origin_array записываются КП из маркировки формата 35(35,135)
+            origin_array = [i.get_number_code() for i in controls if '(' in str(i.code)]
+
         # In theory can return less penalty for uncleaned card / может дать 0 штрафа при мусоре в чипе
         if check_existence and len(user_array) < len(origin_array):
             # add 1 penalty score for missing points
@@ -279,13 +300,22 @@ class ResultChecker:
         origin: 40,* ,* ,90; athlete: 40,41,90,90; result:0 TODO:1 - only one incorrect case
         ```
         """
-        res = 0
-        correct_count = 0
-        for i in splits:
-            if not i.has_penalty:
-                correct_count += 1
+        user_array = [i.code for i in splits]
+        origin_array = [i.get_number_code() for i in controls]
 
-        res += max(len(controls) - correct_count, 0)
+        # Use old algorithm if '*' or '%' in origin_array
+        if '0' in origin_array:
+            res = 0
+            correct_count = 0
+            for i in splits:
+                if not i.has_penalty:
+                    correct_count += 1
+
+            res += max(len(controls) - correct_count, 0)
+            return res
+
+        # Calculate penalty using levenshtein distance
+        res = levenshtein(user_array, origin_array)
 
         return res
 
@@ -368,14 +398,25 @@ class ResultChecker:
         If `allow_duplicates` flag is `True`, the function allows duplicate control points
         to be included in the score calculation.
         """
+        NOVOSIBIRSK_VYBOR = False
+        if NOVOSIBIRSK_VYBOR:
+            forbidden_array = ['143', 143, '148', 148]
+
         user_array = []
         score = 0
 
         for cur_split in result.splits:
             code = str(cur_split.code)
-            if code not in user_array or allow_duplicates:
-                user_array.append(code)
-                score += ResultChecker.get_control_score(code)
+            if NOVOSIBIRSK_VYBOR:
+                if score >= 13:
+                    continue
+                if code not in set(user_array + forbidden_array) or allow_duplicates:
+                    user_array.append(code)
+                    score += ResultChecker.get_control_score(code)
+            else:
+                if code not in user_array or allow_duplicates:
+                    user_array.append(code)
+                    score += ResultChecker.get_control_score(code)
 
         return score
 
