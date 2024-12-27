@@ -134,7 +134,7 @@ LOG_CONFIG = {
         'console': {
             'class': 'logging.StreamHandler',
             'level': logging.DEBUG,
-            'formatter': 'cls',
+            'formatter': 'detailed',
             'stream': sys.stdout,
         },
         'file': {

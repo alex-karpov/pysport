@@ -2,9 +2,11 @@ from re import subn
 from typing import Any, Dict
 
 from sportorg.common.otime import OTime
+from sportorg.modules.winorient.wdb import WinOrientBinary
 from sportorg.utils.time import int_to_otime, time_to_hhmmss
 
 LOG_MSG = 'HTTP Status: %s, Msg: %s'
+
 
 RESULT_STATUS = [
     'NONE',
@@ -37,8 +39,8 @@ class Orgeo:
     async def send(self, data):
         return await self.session.post(self._url, headers=self._headers, json=data)
 
-    async def send_online_cp(self, chip, code, time):
-        url = f'{self._url}&si={chip}&radio={code}&r={time}&fl=0'
+    async def send_online_cp(self, chip, code, time, status=0):
+        url = f'{self._url}&si={chip}&radio={code}&r={time}&fl={status}'
         return await self.session.get(url, headers=self._headers)
 
 
@@ -292,7 +294,8 @@ async def create_online_cp(url, data, race_data, log, *, session):
                             finish_time = int_to_otime(
                                 res['finish_time'] // 10
                             ).to_str()
-                        resp = await o.send_online_cp(card_number, code, finish_time)
+                        status = WinOrientBinary.get_wdb_status(item['status'])
+                        resp = await o.send_online_cp(card_number, code, finish_time, status)
                         print(
                             f'card={card_number} code={str(code)} finish={finish_time}'
                         )
@@ -319,8 +322,9 @@ async def create_online_cp(url, data, race_data, log, *, session):
                         for split in res['splits']:
                             if split['code'] in codes:
                                 split_time = int_to_otime(split['time'] // 10).to_str()
+                                status = WinOrientBinary.get_wdb_status(item['status'])
                                 resp = await o.send_online_cp(
-                                    card_number, split['code'], split_time
+                                    card_number, split['code'], split_time, status
                                 )
                                 result_txt = make_nice(str(await resp.text()))
                                 if resp.status != 200:

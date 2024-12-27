@@ -50,20 +50,20 @@
                     index: 0,
                     name: (result.person.surname + ' ' + result.person.name).slice(0, MAX_PERSON_NAME),
                     org: (result.person.organization && String(result.person.organization.name).slice(0, MAX_ORG_NAME)) || '',
-                    qual: Qualification[result.person.qual],
+                    qual: result.person.qual ? Qualification[result.person.qual] : '',
                     bib: result.person.bib,
                     bib_show: isRelay ? to_relay_bib(result.person.bib) : result.person.bib,
                     year: result.person.birth_date ? (new Date(result.person.birth_date)).getFullYear() : '',
-                    penalty_time: toHHMMSS(result.penalty_time),
+                    penalty_time: toMMSS(result.penalty_time),
                     penalty_laps: result.penalty_laps,
                     scores_ardf: result.scores_ardf,
                     rogaine_score: result.rogaine_score,
                     rogaine_penalty: result.rogaine_penalty,
                     rogaine_points_earned: result.rogaine_score + result.rogaine_penalty,
-                    result: result.result_current,
+                    result: result.result_current.replace('п.п.', 'пп'),
                     result_relay: result.result_relay,
                     result_msec: result.result_msec,
-                    diff: isRogaine || isArdf ? result.diff_scores : toHHMMSS(result.diff),
+                    diff: isRogaine || isArdf ? result.diff_scores : toMMSS(result.diff),
                     place: result.place,
                     status: result.status,
                     scores: result.scores,
@@ -235,15 +235,15 @@
                     bib: result.person.bib,
                     bib_show: isRelay ? to_relay_bib(result.person.bib) : result.person.bib,
                     year: result.person.birth_date ? (new Date(result.person.birth_date)).getFullYear() : '',
-                    penalty_time: toHHMMSS(result.penalty_time),
+                    penalty_time: toMMSS(result.penalty_time),
                     penalty_laps: result.penalty_laps,
                     scores_ardf: result.scores_ardf,
                     rogaine_score: result.rogaine_score,
                     rogaine_penalty: result.rogaine_penalty,
                     rogaine_points_earned: result.rogaine_score + result.rogaine_penalty,
-                    result: result.result_current,
+                    result: result.result_current.replace('п.п.', 'пп'),
                     result_msec: result.result_msec,
-                    diff: isRogaine || isArdf ? result.diff_scores : toHHMMSS(result.diff),
+                    diff: isRogaine || isArdf ? result.diff_scores : toMMSS(result.diff),
                     place: result.place,
                     status: result.status,
                     scores: result.scores,
@@ -508,26 +508,26 @@
 
     var Fields = {
         fields: [
-            {key: 'index', title: '№', size: 4},
+            {key: 'index', title: '№', size: 4, align_right: true},
             {key: 'group', title: 'Группа', size: 10, active: false},
-            {key: 'name', title: 'Фамилия, имя', size: 30},
-            {key: 'org', title: 'Коллектив', size: 20},
-            {key: 'year', title: 'ГР', size: 5},
-            {key: 'qual', title: 'Разряд', size: 7},
-            {key: 'bib_show', title: 'Номер', size: 6},
-            {key: 'penalty_time', title: 'Штраф', size: 9, active: false},
-            {key: 'penalty_laps', title: 'Штраф', size: 9, active: false},
-            {key: 'scores_ardf', title: 'КП', size: 3, active: isArdf},
-            {key: 'rogaine_points_earned', title: 'Очки', size: 4, active: isRogaine},
-            {key: 'rogaine_penalty', title: 'Штр.', size: 4, active: isRogaine},
-            {key: 'rogaine_score', title: 'Итог', size: 4, active: isRogaine},
-            {key: 'result', title: 'Результат', size: 17},
-            {key: 'result_relay', title: 'Ком. рез-т', size: 14},
-            {key: 'diff', title: 'Отставание', size: 11, active: !isArdf && !isRogaine},
-            {key: 'speed', title: 'Темп', size: 8, active: false},
-            {key: 'speed_kmh', title: 'Скорость', size: 8, active: false},
-            {key: 'place_show', title: 'Место', size: 6},
-            {key: 'scores', title: 'Очки', size: 5, active: false},
+            {key: 'name', title: 'Фамилия, имя', size: 26},
+            {key: 'org', title: 'Коллектив', size: 21},
+            {key: 'qual', title: 'Квал', size: 4},
+            {key: 'year', title: 'ГР ', size: 4, align_right: true},
+            {key: 'bib_show', title: 'Номер', size: 5, align_right: true},
+            {key: 'penalty_time', title: 'Штраф', size: 6, active: false},
+            {key: 'penalty_laps', title: 'Штраф', size: 6, align_right: true, active: false},
+            {key: 'scores_ardf', title: 'КП', size: 3, align_right: true, active: isArdf},
+            {key: 'rogaine_points_earned', title: 'Очки', size: 4, align_right: true, active: isRogaine},
+            {key: 'rogaine_penalty', title: 'Штр.', size: 4, align_right: true, active: isRogaine},
+            {key: 'rogaine_score', title: 'Итог', size: 4, align_right: true, active: isRogaine},
+            {key: 'result', title: 'Результат', size: 13},
+            {key: 'result_relay', title: 'Ком. рез-т', size: 13},
+            {key: 'diff', title: 'Отставан', size: 8, active: !isArdf && !isRogaine},
+            {key: 'speed', title: 'Темп', size: 8, align_right: true, active: false},
+            {key: 'speed_kmh', title: 'Скорость', size: 8, align_right: true, active: false},
+            {key: 'place_show', title: 'Место', size: 5, align_right: true},
+            {key: 'scores', title: 'Очки', size: 4, align_right: true, active: false},
             {key: 'all_splits', title: 'Сплиты', active: false}
         ],
         active: function (key, val) {
@@ -739,6 +739,14 @@
             }
         },
         {
+            title: 'Квалификация',
+            value: Fields.isActive('qual'),
+            change: function (checked) {
+                Fields.active('qual', checked);
+                render()
+            }
+        },
+        {
             title: 'Номер',
             value: Fields.isActive('bib'),
             change: function (checked) {
@@ -759,14 +767,6 @@
             value: Fields.isActive('penalty_laps'),
             change: function (checked) {
                 Fields.active('penalty_laps', checked);
-                render()
-            }
-        },
-        {
-            title: 'ARDF КП',
-            value: Fields.isActive('scores_ardf'),
-            change: function (checked) {
-                Fields.active('scores_ardf', checked);
                 render()
             }
         },

@@ -1200,6 +1200,9 @@ msgstr "Люди"
 msgid "Duplicate card numbers (card numbers are reset)"
 msgstr "Дублирующиеся чипы (номера чипов обнулены)"
 
+msgid "Delete duplicate card from old person"
+msgstr "Удалён дублирующийся чип у старого участника"
+
 msgid "Duplicate names"
 msgstr "Повторяющиеся имена"
 
@@ -1562,6 +1565,9 @@ msgstr "ДИСКВ."
 
 msgid "laps"
 msgstr "кр."
+
+msgid "Missing penalty lap"
+msgstr "Пропущен штрафной круг"
 
 msgid "contain"
 msgstr "содержит"

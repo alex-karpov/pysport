@@ -91,14 +91,14 @@
 
     var Fields = {
         fields: [
-            {key: 'index', title: '№', size: 4},
-            {key: 'name', title: 'Фамилия, имя', size: 30},
-            {key: 'org', title: 'Коллектив', size: 20},
-            {key: 'year', title: 'ГР', size: 5},
-            {key: 'qual', title: 'Разряд', size: 7},
-            {key: 'bib_show', title: 'Номер', size: 6},
-            {key: 'card_number', title: 'Номер чипа', size: 11},
-            {key: 'start', title: 'Время старта', size: 13}
+            {key: 'index', title: '№', size: 4, align_right: true},
+            {key: 'name', title: 'Фамилия, имя', size: 26},
+            {key: 'org', title: 'Коллектив', size: 21},
+            {key: 'qual', title: 'Квал', size: 4},
+            {key: 'year', title: 'ГР ', size: 4, align_right: true},
+            {key: 'bib_show', title: 'Номер', size: 5, align_right: true},
+            {key: 'start', title: 'Старт  ', size: 10, align_right: true},
+            {key: 'card_number', title: 'Чип  ', size: 9, align_right: true}
         ],
         active: function (key, val) {
             for (var _i = 0, _a = this.fields; _i < _a.length; _i++) {
@@ -127,7 +127,9 @@
         }
     }.init();
 
-    var store = {};
+    var store = {
+        showLinkForGroups: true
+    };
 
     function render() {
         var resultBlock = document.getElementById('start-list-tables');
@@ -138,7 +140,9 @@
             titleBlock.id = group.name;
             titleBlock.appendChild(document.createTextNode(group.name));
             resultBlock.appendChild(titleBlock);
-            resultBlock.appendChild(getGroupsBlockElement(race));
+            if (store.showLinkForGroups) {
+                resultBlock.appendChild(getGroupsBlockElement(race));
+            }
             if (store.tableView) {
                 resultBlock.appendChild(new TableGenerator(getStartListByGroup(group), Fields.fields).getTable({className: 'sportorg-table'}));
             } else {
@@ -189,6 +193,14 @@
     }.init();
 
     new SettingsGenerator([
+        {
+            title: 'Ссылки на группы',
+            value: !!store.showLinkForGroups,
+            change: function (checked) {
+                store.showLinkForGroups = checked;
+                render()
+            }
+        },
         {
             title: 'Табличный вид',
             value: !!store.tableView,

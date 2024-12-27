@@ -155,10 +155,10 @@
                     qual: Qualification[person.qual],
                     bib: person.bib,
                     year: person.birth_date ? (new Date(person.birth_date)).getFullYear() : '',
-                    sum: person.sum_scores.toFixed(1),
+                    sum: person.sum_scores.toFixed(0),
                     sum_time: person.sum_time,
                     sum_places: person.sum_places,
-                    sum_scores: person.sum_scores.toFixed(1),
+                    sum_scores: person.sum_scores.toFixed(0),
                     ok_count: person.ok_count,
                     place: '',
                     person: person
@@ -166,7 +166,7 @@
                 for (var _b = 0, races_1 = races; _b < races_1.length; _b++) {
                     var race_ = races_1[_b];
                     if (person.results[race_.id]) {
-                        r[race_.id] = person.results[race_.id].scores.toFixed(1) + '(' + person.results[race_.id].result + ')';
+                        r[race_.id] = person.results[race_.id].scores.toFixed(0) + ' (' + person.results[race_.id].result + ')';
                     }
                 }
                 results.push(r);
@@ -229,14 +229,14 @@
     var Fields = {
         fields: [
             {key: 'index', title: '№', size: 4},
-            {key: 'name', title: 'Фамилия, имя', size: 30},
+            {key: 'name', title: 'Фамилия, имя', size: 22},
             {key: 'org', title: 'Коллектив', size: 20},
-            {key: 'year', title: 'ГР', size: 5},
-            {key: 'qual', title: 'Разряд', size: 7},
-            {key: 'bib', title: 'Номер', size: 6},
-            {key: 'sum', title: 'Сумма', size: 6},
+            {key: 'year', title: 'ГР', size: 4},
+            {key: 'qual', title: 'Квал', size: 4},
+            {key: 'bib', title: 'Номер', size: 5},
+            {key: 'sum', title: 'Сумма', size: 5},
             {key: 'ok_count', title: 'Старты', size: 6},
-            {key: 'place', title: 'Место', size: 6}
+            {key: 'place', title: 'Место', size: 5}
         ],
         active: function (key, val) {
             for (var _i = 0, _a = this.fields; _i < _a.length; _i++) {
