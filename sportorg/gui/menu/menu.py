@@ -88,22 +88,6 @@ def menu_list():
                             "title": translate("SportOrg HTML"),
                             "action": "RecoverySportorgHtmlAction",
                         },
-                        {
-                            'title': translate('SPORTident master station CSV'),
-                            'action': 'RecoverySportidentMasterCsvAction',
-                        },
-                        {
-                            'title': translate('SportOrg SI log'),
-                            'action': 'RecoverySportorgSiLogAction',
-                        },
-                        {
-                            'title': translate('Orgeo.ru CSV'),
-                            'action': 'RecoveryOrgeoFinishCsvAction',
-                        },
-                        {
-                            'title': translate('SportOrg HTML'),
-                            'action': 'RecoverySportorgHtmlAction',
-                        },
                     ],
                 },
                 {
@@ -173,12 +157,12 @@ def menu_list():
                 },
                 {
                     "title": translate("Text exchange"),
-                    'shortcut': 'Ctrl+T',
+                    "shortcut": "Ctrl+T",
                     "action": "TextExchangeAction",
                 },
                 {
                     "title": translate("Mass edit"),
-                    'shortcut': 'Ctrl+E',
+                    "shortcut": "Ctrl+E",
                     "tabs": [0, 2, 4],
                     "action": "MassEditAction",
                 },
@@ -424,9 +408,9 @@ def menu_list():
                             "action": "OnlineSendAction",
                         },
                         {
-                            'title': translate('Send multiday start list and results'),
-                            'tabs': [0, 1, 2, 3, 4],
-                            'action': 'OnlineMultidaySendAll',
+                            "title": translate("Send multiday start list and results"),
+                            "tabs": [0, 1, 2, 3, 4],
+                            "action": "OnlineMultidaySendAll",
                         },
                     ],
                 },

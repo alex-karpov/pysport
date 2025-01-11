@@ -253,24 +253,24 @@ def test_penalty_calculation_function():
 
 
 @pytest.mark.parametrize(
-    'controls, splits, expected_penalty, expected_status',
+    "controls, splits, expected_penalty, expected_status",
     [
-        (['*', '*', '*'], [31, 41, 51], 0, 'ok'),
+        (["*", "*", "*"], [31, 41, 51], 0, "ok"),
         # (['*', '*', '*'], [31, 31, 51], 1, 'ok'),
         # (['*', '*', '*'], [31, 31, 31], 2, 'ok'),
-        ([31, 41, 51], [31, 41, 51], 0, 'ok'),
-        ([31, 41, 51], [31, 42, 51], 1, 'ok'),
-        ([40, '*', '*', 90], [40, 31, 32, 90], 0, 'ok'),
+        ([31, 41, 51], [31, 41, 51], 0, "ok"),
+        ([31, 41, 51], [31, 42, 51], 1, "ok"),
+        ([40, "*", "*", 90], [40, 31, 32, 90], 0, "ok"),
         # ([40, '*', '*', 90], [40, 31, 40, 90], 1, 'ok'),
         # ([40, '*', '*', 90], [40, 40, 40, 90], 2, 'ok'),
         # ([40, '*', '*', 90], [40, 90, 90, 90], 2, 'ok'),
         # ([40, '*', '*', 90], [31, 32, 33, 90], 4, 'ok'),
         # ([40, '*', '*', 90], [31, 40, 31, 90], 1, 'ok'),
-        ([40, '*', '*', 90], [31, 40, 90, 41], 1, 'ok'),
-        ([40, '*', '*', 90], [31, 40, 31, 32], 1, 'ok'),
+        ([40, "*", "*", 90], [31, 40, 90, 41], 1, "ok"),
+        ([40, "*", "*", 90], [31, 40, 31, 32], 1, "ok"),
         # ([40, '*', '*', 90], [31, 40, 31, 40], 2, 'ok'),
         # ([40, '*', '*', 90], [40, 40, 90, 90], 2, 'ok'),
-        ([40, '*', '*', 90], [40, 41, 90, 90], 0, 'ok'),
+        ([40, "*", "*", 90], [40, 41, 90, 90], 0, "ok"),
     ],
 )
 def test_marked_route_dont_dsq_old(controls, splits, expected_penalty, expected_status):
@@ -300,25 +300,25 @@ def test_marked_route_dont_dsq_old(controls, splits, expected_penalty, expected_
     ```
     """
     create_race()
-    race().set_setting('marked_route_mode', 'laps')
-    race().set_setting('marked_route_dont_dsq', True)
+    race().set_setting("marked_route_mode", "laps")
+    race().set_setting("marked_route_dont_dsq", True)
 
-    if expected_status == 'ok':
+    if expected_status == "ok":
         assert ok(controls, splits, penalty=expected_penalty)
     else:
         assert dsq(controls, splits, penalty=expected_penalty)
 
 
 @pytest.mark.parametrize(
-    'controls, splits, expected_penalty, expected_status',
+    "controls, splits, expected_penalty, expected_status",
     [
-        ([31, 41, 51], [31, 41, 51], 0, 'ok'),
-        ([31, 41, 51], [31, 42, 51], 1, 'ok'),
-        ([31, 41, 51], [31, 41, 42, 51], 1, 'ok'),
-        ([31, 41, 51], [31, 42, 42, 51], 2, 'ok'),
-        ([31, 41, 51], [31, 51], 1, 'ok'),
-        ([31, 41, 51], [32, 42, 52], 3, 'ok'),
-        ([31, 41, 51], [32, 41, 77, 51], 2, 'ok'),
+        ([31, 41, 51], [31, 41, 51], 0, "ok"),
+        ([31, 41, 51], [31, 42, 51], 1, "ok"),
+        ([31, 41, 51], [31, 41, 42, 51], 1, "ok"),
+        ([31, 41, 51], [31, 42, 42, 51], 2, "ok"),
+        ([31, 41, 51], [31, 51], 1, "ok"),
+        ([31, 41, 51], [32, 42, 52], 3, "ok"),
+        ([31, 41, 51], [32, 41, 77, 51], 2, "ok"),
     ],
 )
 def test_marked_route_dont_dsq(controls, splits, expected_penalty, expected_status):
@@ -326,10 +326,10 @@ def test_marked_route_dont_dsq(controls, splits, expected_penalty, expected_stat
     True - checked by penalty_calculation_free_order()
     """
     create_race()
-    race().set_setting('marked_route_mode', 'laps')
-    race().set_setting('marked_route_dont_dsq', True)
+    race().set_setting("marked_route_mode", "laps")
+    race().set_setting("marked_route_dont_dsq", True)
 
-    if expected_status == 'ok':
+    if expected_status == "ok":
         assert ok(controls, splits, penalty=expected_penalty)
     else:
         assert dsq(controls, splits, penalty=expected_penalty)

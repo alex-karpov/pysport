@@ -83,8 +83,6 @@ class ResultChecker:
             elif not cls.check_penalty_laps(result):
                 result.status = ResultStatus.MISS_PENALTY_LAP
 
-            elif not cls.check_penalty_laps(result):
-                result.status = ResultStatus.MISS_PENALTY_LAP
             elif result.person.group and result.person.group.max_time.to_msec():
                 rp_mode = race().get_setting("result_processing_mode", "time")
                 result_time = result.get_result_otime()
@@ -238,8 +236,8 @@ class ResultChecker:
             # Последний КП маркировки - 44 или 144
             # КП на штрафном круге - 99 (если не отметился на 44/144)
             user_array = []
-            last_markir = ['44', '144']
-            penalty = ['99']
+            last_markir = ["44", "144"]
+            penalty = ["99"]
             for punch in splits:
                 code = str(punch.code)
                 if code not in penalty:
@@ -247,7 +245,7 @@ class ResultChecker:
                 if code in last_markir + penalty:
                     break
             # В origin_array записываются КП из маркировки формата 35(35,135)
-            origin_array = [i.get_number_code() for i in controls if '(' in str(i.code)]
+            origin_array = [i.get_number_code() for i in controls if "(" in str(i.code)]
 
         # In theory can return less penalty for uncleaned card / может дать 0 штрафа при мусоре в чипе
         if check_existence and len(user_array) < len(origin_array):
@@ -306,7 +304,7 @@ class ResultChecker:
         origin_array = [i.get_number_code() for i in controls]
 
         # Use old algorithm if '*' or '%' in origin_array
-        if '0' in origin_array:
+        if "0" in origin_array:
             res = 0
             correct_count = 0
             for i in splits:
@@ -402,7 +400,7 @@ class ResultChecker:
         """
         NOVOSIBIRSK_VYBOR = False
         if NOVOSIBIRSK_VYBOR:
-            forbidden_array = ['143', 143, '148', 148]
+            forbidden_array = ["143", 143, "148", 148]
 
         user_array = []
         score = 0
@@ -515,9 +513,9 @@ class ResultChecker:
     def marked_route_check_penalty_laps(result: Result):
         obj = race()
 
-        mr_if_counting_lap = obj.get_setting('marked_route_if_counting_lap', False)
-        mr_if_station_check = obj.get_setting('marked_route_if_station_check', False)
-        mr_station_code = obj.get_setting('marked_route_penalty_lap_station_code', 0)
+        mr_if_counting_lap = obj.get_setting("marked_route_if_counting_lap", False)
+        mr_if_station_check = obj.get_setting("marked_route_if_station_check", False)
+        mr_station_code = obj.get_setting("marked_route_penalty_lap_station_code", 0)
 
         if mr_if_station_check and int(mr_station_code) > 0:
             count_laps = 0
@@ -530,4 +528,4 @@ class ResultChecker:
 
             if count_laps < result.penalty_laps:
                 result.status = ResultStatus.MISSING_PUNCH
-                result.status_comment = 'пп4.6.12.7'
+                result.status_comment = "пп4.6.12.7"

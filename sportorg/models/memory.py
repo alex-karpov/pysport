@@ -1039,9 +1039,9 @@ class ResultSportident(Result):
                 next_leg_bib = self.person.bib + 1000
                 next_leg_person = find(obj.persons, bib=next_leg_bib)
                 if next_leg_person:
-                    finish_source = 'cp'
+                    finish_source = "cp"
                 else:
-                    finish_source = 'station'
+                    finish_source = "station"
 
         if finish_source == "station":
             if self.finish_time:
@@ -1122,8 +1122,8 @@ class ResultSportident(Result):
             #     'C': {'40': '42', '58': '54', '50': '56'},
             # }
             pairs = {  # Школа №35, 5 октября 2024 г.
-                'A': {'46': '56', '35': '44'},
-                'B': {'39': '53', '34': '56'},
+                "A": {"46": "56", "35": "44"},
+                "B": {"39": "53", "34": "56"},
             }
             pairs_on_course = pairs.get(course.name, {})
             # Добавить обратный порядок взятия: {31: 32} -> {31: 32, 32: 31}
@@ -1132,7 +1132,7 @@ class ResultSportident(Result):
             pair_reject_intermediate = False
             pair_first_cp_index = -1
             pair_intermediate_cp_index = -1
-            pair_second_cp_code = ''
+            pair_second_cp_code = ""
 
         for i in range(len(self.splits)):
             try:
@@ -1217,7 +1217,7 @@ class ResultSportident(Result):
 
                             pair_first_cp_index = -1
                             pair_intermediate_cp_index = -1
-                            pair_second_cp_code = ''
+                            pair_second_cp_code = ""
 
                         elif cur_code in pairs_on_course:
                             # Встречен первый КП в паре
@@ -1253,7 +1253,7 @@ class ResultSportident(Result):
 
                                 pair_first_cp_index = -1
                                 pair_intermediate_cp_index = -1
-                                pair_second_cp_code = ''
+                                pair_second_cp_code = ""
 
                     if False and novosibirsk_vybor_pairs:
                         if pair_reject_intermediate:
@@ -1266,7 +1266,7 @@ class ResultSportident(Result):
                                 next_code = self.splits[i + 1].code
                                 pair_second = pairs_on_course[cur_code]
                                 next_control = str(controls[course_index + 1].code)
-                                if '*' in next_control:
+                                if "*" in next_control:
                                     if next_code == pair_second:
                                         # Если следом за текущим КП есть КП из пары
                                         pair_accept_second = True

@@ -169,7 +169,7 @@ class SportorgPrinter:
         fs_large = 4
 
         # Information about start
-        title = obj.data.description.split('<br>')
+        title = obj.data.description.split("<br>")
         for line in title:
             self.print_line(line, fn, fs_main)
         self.print_line(
@@ -239,9 +239,6 @@ class SportorgPrinter:
 
                 if not is_relay:
                     line += ("  " + str(split.leg_place))[-3:]
-
-                # Маркировка на ПР в Томске по варианту, приближенному к варианту Д (пп4.11)
-                tomsk_marked_route = False
 
                 # Маркировка на ПР в Томске по варианту, приближенному к варианту Д (пп4.11)
                 tomsk_marked_route = False

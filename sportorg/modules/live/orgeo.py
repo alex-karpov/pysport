@@ -7,7 +7,6 @@ from sportorg.utils.time import int_to_otime, time_to_hhmmss
 
 LOG_MSG = "HTTP Status: %s, Msg: %s"
 
-
 RESULT_STATUS = [
     "NONE",
     "OK",
@@ -294,7 +293,7 @@ async def create_online_cp(url, data, race_data, log, *, session):
                             finish_time = int_to_otime(
                                 res["finish_time"] // 10
                             ).to_str()
-                        status = WinOrientBinary.get_wdb_status(item['status'])
+                        status = WinOrientBinary.get_wdb_status(item["status"])
                         resp = await o.send_online_cp(
                             card_number, code, finish_time, status
                         )
@@ -324,7 +323,7 @@ async def create_online_cp(url, data, race_data, log, *, session):
                         for split in res["splits"]:
                             if split["code"] in codes:
                                 split_time = int_to_otime(split["time"] // 10).to_str()
-                                status = WinOrientBinary.get_wdb_status(item['status'])
+                                status = WinOrientBinary.get_wdb_status(item["status"])
                                 resp = await o.send_online_cp(
                                     card_number, split["code"], split_time, status
                                 )

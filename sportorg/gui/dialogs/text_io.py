@@ -27,9 +27,9 @@ def get_value_options():
         translate("Penalty time"),
         translate("Penalty legs"),
         translate("Card number"),
-        translate('Last name'),
-        translate('First name'),
-        translate('Year of birth'),
+        translate("Last name"),
+        translate("First name"),
+        translate("Year of birth"),
         translate("Group"),
         translate("Team"),
         translate("Qualification"),
@@ -271,8 +271,8 @@ class TextExchangeDialog(QDialog):
 
 
 def get_text(key: str, value: str, separator: str):
-    time_accuracy = race().get_setting('time_accuracy', 0)
-    time_rounding_setting = race().get_setting('time_rounding', 'math')
+    time_accuracy = race().get_setting("time_accuracy", 0)
+    time_rounding_setting = race().get_setting("time_rounding", "math")
     time_rounding = TimeRounding[time_rounding_setting]
     ret = []
     for person in race().persons:
@@ -331,24 +331,24 @@ def get_property(
             return result.get_credit_time().round(accuracy, rounding).to_str(accuracy)
         else:
             return OTime().round(accuracy, rounding).to_str(accuracy)
-    elif key == translate('Penalty time'):
+    elif key == translate("Penalty time"):
         result = race().find_person_result(person)
         if result:
             return result.get_penalty_time().round(accuracy, rounding).to_str(accuracy)
         else:
             return OTime().round(accuracy, rounding).to_str(accuracy)
-    elif key == translate('Penalty legs'):
+    elif key == translate("Penalty legs"):
         result = race().find_person_result(person)
         if result and result.penalty_laps:
             return str(result.penalty_laps)
     elif key == translate("Card number"):
         if person.card_number:
             return str(person.card_number)
-    elif key == translate('Last name'):
+    elif key == translate("Last name"):
         return str(person.surname)
-    elif key == translate('First name'):
+    elif key == translate("First name"):
         return str(person.name)
-    elif key == translate('Year of birth'):
+    elif key == translate("Year of birth"):
         return str(person.year)
     elif key == translate("Group"):
         if person.group:
@@ -414,13 +414,13 @@ def set_property(person, key, value, **options):
     elif key == translate("Card number"):
         race().person_card_number(person, int(value))
         modified_object = person
-    elif key == translate('Last name'):
+    elif key == translate("Last name"):
         person.surname = value
         modified_object = person
-    elif key == translate('First name'):
+    elif key == translate("First name"):
         person.name = value
         modified_object = person
-    elif key == translate('Year of birth'):
+    elif key == translate("Year of birth"):
         if str(value).isdigit():
             person.year = int(value)
             modified_object = person

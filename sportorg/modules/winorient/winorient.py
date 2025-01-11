@@ -37,31 +37,16 @@ def import_csv(source):
         person_org.contact = person_dict["representative"]
 
         # Remove duplicate cards from existing persons
-        sportident_card = int(person_dict['sportident_card'])
+        sportident_card = int(person_dict["sportident_card"])
         if sportident_card and sportident_card in race().person_index_card:
             person_dupl = race().person_index_card[sportident_card]
             person_dupl.set_card_number(0)
             logging.info(
-                '{}: {} {} {} {}'.format(
-                    translate('Delete duplicate card from old person'),
+                "{}: {} {} {} {}".format(
+                    translate("Delete duplicate card from old person"),
                     person_dupl.full_name,
-                    person_dupl.group.name if person_dupl.group else '',
-                    person_dupl.organization.name if person_dupl.organization else '',
-                    person_dupl.card_number,
-                )
-            )
-
-        # Remove duplicate cards from existing persons
-        sportident_card = int(person_dict['sportident_card'])
-        if sportident_card and sportident_card in race().person_index_card:
-            person_dupl = race().person_index_card[sportident_card]
-            person_dupl.set_card_number(0)
-            logging.info(
-                '{}: {} {} {} {}'.format(
-                    translate('Delete duplicate card from old person'),
-                    person_dupl.full_name,
-                    person_dupl.group.name if person_dupl.group else '',
-                    person_dupl.organization.name if person_dupl.organization else '',
+                    person_dupl.group.name if person_dupl.group else "",
+                    person_dupl.organization.name if person_dupl.organization else "",
                     person_dupl.card_number,
                 )
             )
@@ -77,9 +62,9 @@ def import_csv(source):
         person.qual = Qualification(qual_id)
         person.comment = person_dict["comment"]
 
-        if 'в/к' in person.comment:
+        if "в/к" in person.comment:
             person.is_out_of_competition = True
-        if 'лично' in person.comment:
+        if "лично" in person.comment:
             person.is_personal = True
 
         obj.persons.append(person)
