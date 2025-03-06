@@ -19,14 +19,21 @@ except ModuleNotFoundError:
         QWidget,
     )
 
+from sportorg.common.otime import OTime, TimeRounding
 from sportorg.gui.global_access import GlobalAccess
 from sportorg.language import translate
-from sportorg.models.memory import Qualification, ResultManual, race
+from sportorg.models.memory import (
+    Organization,
+    Person,
+    Qualification,
+    ResultManual,
+    race,
+)
+from sportorg.modules.live.live import live_client
 from sportorg.utils.time import (
-    hhmmss_to_time,
-    time_to_hhmmss,
     date_to_ddmmyyyy,
     ddmmyyyy_to_time,
+    hhmmss_to_time,
 )
 
 
@@ -39,6 +46,9 @@ def get_value_options():
         translate("Penalty time"),
         translate("Penalty legs"),
         translate("Card number"),
+        translate("Last name"),
+        translate("First name"),
+        translate("Year of birth"),
         translate("Group"),
         translate("Team"),
         translate("Qualification"),
@@ -148,6 +158,8 @@ class TextExchangeDialog(QDialog):
         self.layout.addWidget(widget)
         self.layout.addWidget(button_box)
 
+        self.text_edit.setFocus()
+
         self.retranslate_ui(self)
 
     def save_to_file(self):
@@ -215,6 +227,7 @@ class TextExchangeDialog(QDialog):
             logging.error(e)
 
     def accept(self, *args, **kwargs):
+        affected_objects = []
         try:
             index_type = "bib"
             if self.name_radio_button.isChecked():
@@ -246,13 +259,15 @@ class TextExchangeDialog(QDialog):
                     if value:
                         person = get_person_by_id(index_type, index)
                         if person:
-                            set_property(
+                            modified_object = set_property(
                                 person,
                                 key,
                                 value,
                                 creating_new_result=self.option_creating_new_result_checkbox.isChecked(),
                             )
-                            success_count += 1
+                            if modified_object:
+                                success_count += 1
+                                affected_objects.append(modified_object)
                         else:
                             logging.debug(
                                 "text_io: no person found for line %s", str(i)
@@ -267,15 +282,24 @@ class TextExchangeDialog(QDialog):
         except Exception as e:
             logging.error(e)
 
+        if affected_objects:
+            affected_objects.reverse()
+            live_client.send(affected_objects)
+            # Проверить, что можно слать объекты, а не словари как в остальных местах
+            # Teamwork().send(affected_objects)
+
         super().accept(*args, **kwargs)
 
 
-def get_text(key, value, separator):
+def get_text(key: str, value: str, separator: str):
+    time_accuracy = race().get_setting("time_accuracy", 0)
+    time_rounding_setting = race().get_setting("time_rounding", "math")
+    time_rounding = TimeRounding[time_rounding_setting]
     ret = []
-    for i in race().persons:
-        id_str = get_id(i, key)
+    for person in race().persons:
+        id_str = get_id(person, key)
         if id_str:
-            value_str = get_property(i, value)
+            value_str = get_property(person, value, time_accuracy, time_rounding)
             if not value_str:
                 value_str = ""
             ret.append(id_str + separator + value_str)
@@ -302,17 +326,22 @@ def get_person_by_id(index, value):
     return None
 
 
-def get_property(person, key):
+def get_property(
+    person: Person,
+    key: str,
+    accuracy: int = 0,
+    rounding: TimeRounding = TimeRounding.math,
+):
     if key == translate("Start"):
         result = race().find_person_result(person)
         if result:
-            return time_to_hhmmss(result.get_start_time())
+            return result.get_start_time().round(accuracy, rounding).to_str(accuracy)
         else:
-            return time_to_hhmmss(person.start_time)
+            return person.start_time.round(accuracy, rounding).to_str(accuracy)
     elif key == translate("Finish"):
         result = race().find_person_result(person)
         if result:
-            return time_to_hhmmss(result.get_finish_time())
+            return result.get_finish_time().round(accuracy, rounding).to_str(accuracy)
     elif key == translate("Result"):
         result = race().find_person_result(person)
         if result:
@@ -320,15 +349,15 @@ def get_property(person, key):
     elif key == translate("Credit"):
         result = race().find_person_result(person)
         if result:
-            return time_to_hhmmss(result.get_credit_time())
+            return result.get_credit_time().round(accuracy, rounding).to_str(accuracy)
         else:
-            return "00:00:00"
+            return OTime().round(accuracy, rounding).to_str(accuracy)
     elif key == translate("Penalty time"):
         result = race().find_person_result(person)
         if result:
-            return time_to_hhmmss(result.get_penalty_time())
+            return result.get_penalty_time().round(accuracy, rounding).to_str(accuracy)
         else:
-            return "00:00:00"
+            return OTime().round(accuracy, rounding).to_str(accuracy)
     elif key == translate("Penalty legs"):
         result = race().find_person_result(person)
         if result and result.penalty_laps:
@@ -336,6 +365,12 @@ def get_property(person, key):
     elif key == translate("Card number"):
         if person.card_number:
             return str(person.card_number)
+    elif key == translate("Last name"):
+        return str(person.surname)
+    elif key == translate("First name"):
+        return str(person.name)
+    elif key == translate("Year of birth"):
+        return str(person.year)
     elif key == translate("Group"):
         if person.group:
             return person.group.name
@@ -362,13 +397,16 @@ def get_property(person, key):
 
 
 def set_property(person, key, value, **options):
+    modified_object = None
     if key == translate("Start"):
         result = race().find_person_result(person)
         if result:
             result.start_time = hhmmss_to_time(value)
             person.start_time = hhmmss_to_time(value)
+            modified_object = result
         else:
             person.start_time = hhmmss_to_time(value)
+            modified_object = person
     elif key == translate("Finish"):
         result = race().find_person_result(person)
         if result:
@@ -379,50 +417,79 @@ def set_property(person, key, value, **options):
             result.bib = person.bib
             result.finish_time = hhmmss_to_time(value)
             race().add_new_result(result)
+        modified_object = result
     elif key == translate("Result"):
         pass
     elif key == translate("Credit"):
         result = race().find_person_result(person)
         if result:
             result.credit_time = hhmmss_to_time(value)
+            modified_object = result
     elif key == translate("Penalty time"):
         result = race().find_person_result(person)
         if result:
             result.penalty_time = hhmmss_to_time(value)
+            modified_object = result
     elif key == translate("Penalty legs"):
         result = race().find_person_result(person)
         if result:
             result.penalty_laps = int(value)
+            modified_object = result
     elif key == translate("Card number"):
         race().person_card_number(person, int(value))
+        modified_object = person
+    elif key == translate("Last name"):
+        person.surname = value
+        modified_object = person
+    elif key == translate("First name"):
+        person.name = value
+        modified_object = person
+    elif key == translate("Year of birth"):
+        if str(value).isdigit():
+            person.year = int(value)
+            modified_object = person
     elif key == translate("Group"):
         group = race().find_group(value)
         if group:
             person.group = group
+            modified_object = person
     elif key == translate("Team"):
         team = race().find_team(value)
-        if team:
-            person.organization = team
+        if not team:
+            team = Organization()
+            team.name = value
+            race().organizations.append(team)
+        person.organization = team
+        modified_object = person
     elif key == translate("Qualification"):
         qual = Qualification.get_qual_by_name(value)
         if qual is not None:
             person.qual = qual
+            modified_object = person
     elif key == translate("Bib"):
         if value.isdigit():
             new_bib = int(value)
             person.set_bib(new_bib)
+            modified_object = person
     elif key == translate("Comment"):
         person.comment = value
+        modified_object = person
     elif key == translate("IOF id"):
         if str(value).isdigit():
             person.world_code = int(value)
+            modified_object = person
     elif key == translate("National id"):
         if str(value).isdigit():
             person.national_code = int(value)
+            modified_object = person
     elif key == translate("Start group"):
         if str(value).isdigit():
             person.start_group = int(value)
+            modified_object = person
     elif key == translate("Middle name"):
         person.middle_name = str(value)
+        modified_object = person
     elif key == translate("Birthday"):
         person.birth_date = ddmmyyyy_to_time(str(value))
+        modified_object = person
+    return modified_object

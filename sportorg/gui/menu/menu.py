@@ -171,6 +171,7 @@ def menu_list():
                 },
                 {
                     "title": translate("Mass edit"),
+                    "shortcut": "Ctrl+E",
                     "tabs": [0, 2, 4],
                     "shortcut": "Ctrl+E",
                     "action": "MassEditAction",
@@ -411,6 +412,11 @@ def menu_list():
                             "shortcut": "Ctrl+K",
                             "tabs": [0, 1, 2, 3, 4],
                             "action": "OnlineSendAction",
+                        },
+                        {
+                            "title": translate("Send multiday start list and results"),
+                            "tabs": [0, 1, 2, 3, 4],
+                            "action": "OnlineMultidaySendAll",
                         },
                     ],
                 },

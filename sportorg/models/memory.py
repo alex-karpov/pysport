@@ -42,6 +42,12 @@ class SystemType(Enum):
         return self.__str__()
 
 
+class PrintableValue(object):
+    def __init__(self, value, printable_name):
+        self.value = value
+        self.printable_name = printable_name
+
+
 class _TitleType(Enum):
     def __str__(self) -> str:
         return self._name_
@@ -832,7 +838,7 @@ class Result(ABC):
                 return OTime()  # result not found in that day
         return sum_result
 
-    def get_start_time(self):
+    def get_start_time(self) -> OTime:
         if self.person and self.person.group:
             group = self.person.group
             if group.get_type() == RaceType.PURSUIT:
@@ -1058,6 +1064,19 @@ class ResultSportident(Result):
     def get_finish_time(self) -> OTime:
         obj = race()
         finish_source = obj.get_setting("system_finish_source", "station")
+
+        # Эстафета 4 человека в Нижнем Новгороде 24 августа 2023 г.
+        # Первые этапы финишируют по станции 90, последний этап — по финишной станции
+        nizhni_novgorod_relay = False
+        if nizhni_novgorod_relay:
+            if self.person and self.person.bib > 1000:
+                next_leg_bib = self.person.bib + 1000
+                next_leg_person = find(obj.persons, bib=next_leg_bib)
+                if next_leg_person:
+                    finish_source = "cp"
+                else:
+                    finish_source = "station"
+
         if finish_source == "station":
             if self.finish_time:
                 return self.finish_time
@@ -1090,7 +1109,7 @@ class ResultSportident(Result):
                 splits.append(split)
         return splits
 
-    def check(self, course=None):
+    def check(self, course: Course = None):
         obj = race()
         if not course:
             return super().check()
@@ -1114,6 +1133,40 @@ class ResultSportident(Result):
         )
 
         optional_controls_taken = set()
+
+        # Дистанция по выбору со связками КП.
+        # На карту нанесены связки КП (два КП соединены линией). Эти КП обязательно брать
+        # последовательно, можно в прямом порядке, можно в обратном. Если отмечен только
+        # один КП из связки, он не засчитывается. Если между двумя КП из связки отмечены
+        # другие КП, они не засчитываются. Эквивалентная формулировка: если между КП
+        # из связки только один посторонний КП, этот КП не засчитывается;
+        # если два и больше посторонних КП, то не засчитываются КП из связки.
+
+        # Недостатки реализации
+        # * Если взял один КП из одной связки, а затем сразу взял другую связку, то обе связки
+        #   не засчитаются.
+        # * КП связки могут быть не засчитаны, если спортсмен взял связку в конце дистанции
+        #   и в чипе есть лишние КП
+        novosibirsk_vybor_pairs = False
+        if novosibirsk_vybor_pairs:
+            # Номера КП — строка ('31', '32')
+            # pairs = {
+            #     'A': {'46': '54', '37': '53', '34': '55'},
+            #     'B': {'37': '45', '31': '35', '46': '50'},
+            #     'C': {'40': '42', '58': '54', '50': '56'},
+            # }
+            pairs = {  # Школа №35, 5 октября 2024 г.
+                "A": {"46": "56", "35": "44"},
+                "B": {"39": "53", "34": "56"},
+            }
+            pairs_on_course = pairs.get(course.name, {})
+            # Добавить обратный порядок взятия: {31: 32} -> {31: 32, 32: 31}
+            pairs_on_course.update({v: k for k, v in pairs_on_course.items()})
+            pair_accept_second = False
+            pair_reject_intermediate = False
+            pair_first_cp_index = -1
+            pair_intermediate_cp_index = -1
+            pair_second_cp_code = ""
 
         for i in range(len(self.splits)):
             try:
@@ -1179,6 +1232,99 @@ class ResultSportident(Result):
 
                             is_unique = False
                             break
+
+                    if novosibirsk_vybor_pairs and is_unique:
+                        if pair_first_cp_index >= 0 and cur_code == pair_second_cp_code:
+                            # Встречен второй КП из пары
+                            # * засчитать первый КП пары
+                            # * засчитать второй КП пары (сохранить is_unique = True)
+                            # * вернуться в исходное состояние
+                            split_first = self.splits[pair_first_cp_index]
+                            split_first.is_correct = True
+                            split_first.has_penalty = False
+                            recognized_indexes.append(pair_first_cp_index)
+                            split_first.course_index = course_index
+                            course_index += 1
+
+                            if course_index >= count_controls:
+                                is_unique = False
+
+                            pair_first_cp_index = -1
+                            pair_intermediate_cp_index = -1
+                            pair_second_cp_code = ""
+
+                        elif cur_code in pairs_on_course:
+                            # Встречен первый КП в паре
+                            # * отметить этот факт
+                            # * временно пропустить до встречи второго КП
+                            pair_first_cp_index = i
+                            pair_second_cp_code = pairs_on_course[cur_code]
+                            is_unique = False
+
+                        elif pair_first_cp_index >= 0:
+                            # Встречен промежуточный КП
+                            if pair_intermediate_cp_index < 0:
+                                # Предварительно пропустить не засчитывая
+                                pair_intermediate_cp_index = i
+                                is_unique = False
+                            else:
+                                # Два промежуточных КП внутри пары:
+                                # * не засчитывать пару (оставить как есть)
+                                # * засчитать первый промежуточный КП
+                                # * засчитать второй промежуточных КП (оставить is_unique = True)
+                                # * вернуться в исходное состояние
+                                split_intermediate = self.splits[
+                                    pair_intermediate_cp_index
+                                ]
+                                split_intermediate.is_correct = True
+                                split_intermediate.has_penalty = False
+                                recognized_indexes.append(pair_intermediate_cp_index)
+                                split_intermediate.course_index = course_index
+                                course_index += 1
+
+                                if course_index >= count_controls:
+                                    is_unique = False
+
+                                pair_first_cp_index = -1
+                                pair_intermediate_cp_index = -1
+                                pair_second_cp_code = ""
+
+                    if False and novosibirsk_vybor_pairs:
+                        if pair_reject_intermediate:
+                            pair_reject_intermediate = False
+                            is_unique = False
+                        elif pair_accept_second:
+                            pair_accept_second = False
+                        elif cur_code in pairs_on_course and is_unique:
+                            try:
+                                next_code = self.splits[i + 1].code
+                                pair_second = pairs_on_course[cur_code]
+                                next_control = str(controls[course_index + 1].code)
+                                if "*" in next_control:
+                                    if next_code == pair_second:
+                                        # Если следом за текущим КП есть КП из пары
+                                        pair_accept_second = True
+                                    else:
+                                        # Если следом за текущим КП следует другой КП,
+                                        # то проверить ещё один следующий КП
+                                        pair_reject_intermediate = True
+                                        next_code = self.splits[i + 2].code
+                                        if next_code == pair_second:
+                                            # Принять второй КП из пары
+                                            pair_accept_second = True
+                                        else:
+                                            # Отклонить текущий КП так как нет пары
+                                            is_unique = False
+                                elif next_code == pair_second:
+                                    # Спортсмен взял лишний КП. Неявным образом будет
+                                    # отклонён предыдущий КП не из пары
+                                    pair_accept_second = True
+                                else:
+                                    is_unique = False
+                            except IndexError:
+                                # Или закончились отметки, или закончилась дистанция
+                                is_unique = False
+
                     if is_unique:
                         split.is_correct = True
                         split.has_penalty = False
@@ -1230,6 +1376,24 @@ class ResultSportident(Result):
 
             except KeyError:
                 return False
+
+        # Маркировка на ПР в Томске по варианту, приближенному к варианту Д (пп4.11)
+        tomsk_marked_route = False
+
+        # # Участник дисквалифицируется, если количество КП в чипе меньше количества
+        # # истинных КП, указанного в параметрах дистанции.
+        # if tomsk_marked_route:
+        #     if len(self.splits) < len(count_controls):
+        #         return False
+
+        # # Участник дисквалифицируется, если не отметил ни одного правильного КП
+        # if tomsk_marked_route:
+        #     try:
+        #         split_codes = [int(split.code) for split in self.splits]
+        #     except:
+        #         pass
+        #     if all([cp.get_number_code() not in split_codes for cp in controls]):
+        #         return False
 
         return False
 
@@ -1776,6 +1940,12 @@ class Race(Model):
                 if result.person in person_list:
                     return_results.append(result)
 
+            # Sort groups as in Groups tab
+            order = {group.name: index for index, group in enumerate(self.groups)}
+            return_groups = sorted(
+                list(return_groups), key=lambda group: order[group.name]
+            )
+
             return {
                 "object": self.__class__.__name__,
                 "id": str(self.id),
@@ -2006,7 +2176,7 @@ class Race(Model):
         # usual connection via group
         if not ret and person.group:
             if person.group.is_any_course:
-                for course in self.courses:
+                for course in [c for c in self.courses if person.group.name in c.name]:
                     if result.check(course):
                         return course
             else:

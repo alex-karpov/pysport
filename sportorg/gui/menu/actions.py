@@ -873,6 +873,37 @@ class OnlineSendAction(Action, metaclass=ActionFactory):
             logging.exception(e)
 
 
+class OnlineMultidaySendAll(Action, metaclass=ActionFactory):
+    def execute(self):
+        try:
+            items = []
+            items = race().persons
+            live_client.send(items)
+            if self.app.current_tab == 0:
+                items = race().persons
+            if self.app.current_tab == 1:
+                items = race().results
+            if self.app.current_tab == 2:
+                items = race().groups
+            if self.app.current_tab == 3:
+                items = race().courses
+            if self.app.current_tab == 4:
+                items = race().organizations
+            indexes = self.app.get_selected_rows()
+            if not indexes:
+                return
+            selected_items = []
+            for index in indexes:
+                if index < 0:
+                    continue
+                if index >= len(items):
+                    pass
+                selected_items.append(items[index])
+            live_client.send(selected_items)
+        except Exception as e:
+            logging.exception(e)
+
+
 class AboutAction(Action, metaclass=ActionFactory):
     def execute(self):
         AboutDialog().exec_()
