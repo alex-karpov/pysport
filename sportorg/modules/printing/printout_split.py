@@ -170,7 +170,9 @@ class SportorgPrinter:
         fs_large = 4
 
         # Information about start
-        self.print_line(obj.data.title, fn, fs_main)
+        title = obj.data.description.split("<br>")
+        for line in title:
+            self.print_line(line, fn, fs_main)
         self.print_line(
             str(obj.data.start_datetime)[:10] + ", " + obj.data.location, fn, fs_main
         )
@@ -239,8 +241,12 @@ class SportorgPrinter:
                 if not is_relay:
                     line += ("  " + str(split.leg_place))[-3:]
 
+                # Маркировка на ПР в Томске по варианту, приближенному к варианту Д (пп4.11)
+                tomsk_marked_route = False
+
                 # Highlight correct controls of marked route ( '31' and '31(31,32,33)' => + )
-                if is_penalty_used and course:
+                # Не печатать правильные отметки в сплитах для предотвращения передачи информации
+                if is_penalty_used and course and not tomsk_marked_route:
                     for course_cp in course.controls:
                         if str(course_cp).startswith(split.code):
                             line += " +"
@@ -409,5 +415,8 @@ class SportorgPrinter:
                     )
 
         self.print_line(obj.data.url, fn, fs_main)
+
+        # empty vertical space for Xprinter printer without blade
+        # for _ in range(14): self.print_line('.', 'Arial', 1)
 
         self.end_page()
