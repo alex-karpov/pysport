@@ -14,7 +14,7 @@ from sportorg.common.model import Model
 from sportorg.common.otime import OTime, TimeRounding
 from sportorg.language import translate
 from sportorg.modules.configs.configs import Config
-from sportorg.utils.time import hhmmss_to_time, date_to_ddmmyyyy
+from sportorg.utils.time import date_to_ddmmyyyy, hhmmss_to_time
 
 
 class NotEmptyException(Exception):
