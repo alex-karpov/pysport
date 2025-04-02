@@ -11,6 +11,7 @@ from sportorg.models.memory import (
     Person,
     Qualification,
     ResultManual,
+    ResultSportident,
     race,
 )
 from sportorg.modules.live.live import live_client
@@ -43,6 +44,10 @@ def get_value_options():
 
 def get_readonly_options():
     return [translate("Result")]
+
+
+def get_default_option():
+    return translate("Finish")
 
 
 class TextExchangeDialog(QDialog):
@@ -81,6 +86,7 @@ class TextExchangeDialog(QDialog):
         self.value_combo_box = QtWidgets.QComboBox(self.value_group_box)
 
         self.value_combo_box.addItems(get_value_options())
+        self.value_combo_box.setCurrentIndex(1)  # Плавание — финиш по умолчанию
         self.grid_layout_child.addWidget(self.value_combo_box, 1, 1, 1, 1)
         self.id_label.raise_()
         self.bib_radio_button.raise_()
@@ -117,6 +123,7 @@ class TextExchangeDialog(QDialog):
         self.option_creating_new_result_checkbox = QCheckBox(
             translate("Create new result, if doesn't exist")
         )
+        self.option_creating_new_result_checkbox.setChecked(True)
         self.options_grid_layout.addWidget(
             self.option_creating_new_result_checkbox, 0, 0, 1, 1
         )
@@ -161,7 +168,7 @@ class TextExchangeDialog(QDialog):
         self.options_group_box.setTitle(translate("Options"))
         self.text_edit.setPlainText("")
 
-        self.get_text_wrapper()
+        # self.get_text_wrapper()
 
         self.value_combo_box.currentIndexChanged.connect(self.get_text_wrapper)
         self.bib_radio_button.clicked.connect(self.get_text_wrapper)
@@ -387,7 +394,8 @@ def set_property(person, key, value, **options):
         if result:
             result.finish_time = hhmmss_to_time(value)
         elif options.get("creating_new_result", False):
-            result = race().new_result(ResultManual)
+            # result = race().new_result(ResultManual)
+            result = race().new_result(ResultSportident)
             result.person = person
             result.bib = person.bib
             result.finish_time = hhmmss_to_time(value)
