@@ -26,7 +26,6 @@ from sportorg.models.memory import (
     Organization,
     Person,
     Qualification,
-    ResultManual,
     ResultSportident,
     ResultStatus,
     race,
