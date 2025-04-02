@@ -302,6 +302,11 @@ def menu_list():
                     "shortcut": "F7",
                     "action": "AddSPORTidentResultAction",
                 },
+                {
+                    "title": translate("Swimming Results"),
+                    "shortcut": "Alt+W",
+                    "action": "SwimmingResultsAction",
+                },
             ],
         },
         {

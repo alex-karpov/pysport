@@ -44,6 +44,7 @@ from sportorg.gui.dialogs.start_preparation import (
     guess_courses_for_groups,
 )
 from sportorg.gui.dialogs.start_time_change_dialog import StartTimeChangeDialog
+from sportorg.gui.dialogs.swimming_results import SwimmingResultsDialog
 from sportorg.gui.dialogs.teamwork_properties import TeamworkPropertiesDialog
 from sportorg.gui.dialogs.telegram_dialog import TelegramDialog
 from sportorg.gui.dialogs.text_io import TextExchangeDialog
@@ -993,3 +994,8 @@ class ExtractPersonMiddleName(Action, metaclass=ActionFactory):
         for person in race().persons:
             person.extract_middle_name()
         self.app.refresh()
+
+
+class SwimmingResultsAction(Action, metaclass=ActionFactory):
+    def execute(self):
+        SwimmingResultsDialog().exec_()
