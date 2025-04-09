@@ -28,6 +28,7 @@ from sportorg.models.memory import (
     Qualification,
     ResultManual,
     ResultSportident,
+    ResultStatus,
     race,
 )
 from sportorg.modules.live.live import live_client
@@ -423,7 +424,15 @@ def set_property(person, key, value, **options):
             result = race().new_result(ResultSportident)
             result.person = person
             result.bib = person.bib
-            result.finish_time = hhmmss_to_time(value)
+            result.finish_time = OTime()
+            if "dns" in value.lower():
+                result.status = ResultStatus.DID_NOT_START
+            elif "dnf" in value.lower():
+                result.status = ResultStatus.DID_NOT_FINISH
+            elif "dsq" in value.lower():
+                result.status = ResultStatus.DISQUALIFIED
+            else:
+                result.finish_time = hhmmss_to_time(value)
             race().add_new_result(result)
         modified_object = result
     elif key == translate("Result"):

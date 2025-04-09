@@ -4,6 +4,7 @@ except ModuleNotFoundError:
     from PySide2.QtCore import QDate, QTime
 
 from datetime import date, datetime, timedelta
+
 from sportorg.common.otime import OTime
 
 
