@@ -1147,17 +1147,19 @@ class ResultSportident(Result):
         #   не засчитаются.
         # * КП связки могут быть не засчитаны, если спортсмен взял связку в конце дистанции
         #   и в чипе есть лишние КП
+
         novosibirsk_vybor_pairs = False
         if novosibirsk_vybor_pairs:
             # Номера КП — строка ('31', '32')
-            # pairs = {
-            #     'A': {'46': '54', '37': '53', '34': '55'},
-            #     'B': {'37': '45', '31': '35', '46': '50'},
-            #     'C': {'40': '42', '58': '54', '50': '56'},
+
+            # pairs = {  # База для тестирования и отладки: data/2024-10-05_novosibirsk_vybor_pairs.json
+            #     "A": {"46": "56", "35": "44"},
+            #     "B": {"39": "53", "34": "56"},
+            #     "_T": {"31": "32", "41": "42"},
             # }
-            pairs = {  # Школа №35, 5 октября 2024 г.
-                "A": {"46": "56", "35": "44"},
-                "B": {"39": "53", "34": "56"},
+            pairs = {  # 13 апреля 2025 г., Монумент Славы
+                "A": {"134": "150", "148": "149", "246": "256", "254": "258"},
+                "B": {"145": "155", "132": "148", "235": "241", "252": "254"},
             }
             pairs_on_course = pairs.get(course.name, {})
             # Добавить обратный порядок взятия: {31: 32} -> {31: 32, 32: 31}
@@ -1167,6 +1169,17 @@ class ResultSportident(Result):
             pair_first_cp_index = -1
             pair_intermediate_cp_index = -1
             pair_second_cp_code = ""
+
+            # Разделить дистанцию на два круга (на случай одинаковых КП на разных кругах)
+            lap_cp_code = "70"
+            courses_with_laps = ["A", "B"]
+            if lap_cp_code and course.name in courses_with_laps:
+                is_first_lap = True
+                for i in self.splits:
+                    if i.code == lap_cp_code:
+                        is_first_lap = False
+                    elif int(i.code) < 100:
+                        i.code = str(int(i.code) + (100 if is_first_lap else 200))
 
         for i in range(len(self.splits)):
             try:
