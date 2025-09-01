@@ -106,6 +106,12 @@ class GroupEditDialog(BaseDialog):
                 items=RaceType.get_titles(),
             ),
             CheckBoxField(
+                label=translate("All-Russian competition"),
+                object=group,
+                key="is_all_russian_competition",
+                id="is_all_russian_competition",
+            ),
+            CheckBoxField(
                 label=translate("Best team placing"),
                 object=group,
                 key="is_best_team_placing_mode",
@@ -167,11 +173,21 @@ class GroupEditDialog(BaseDialog):
         )
 
     def on_race_type_changed(self):
-        relay_type_item = self.fields["is_best_team_placing_mode"].q_item
+        competition_type_item = self.fields["is_all_russian_competition"].q_item
+        best_placing_item = self.fields["is_best_team_placing_mode"].q_item
         if self.is_relay_type_selected():
-            relay_type_item.show()
+            competition_type_item.show()
+            best_placing_item.show()
+            self.on_competition_type_changed()
         else:
-            relay_type_item.hide()
+            competition_type_item.hide()
+            best_placing_item.hide()
+        competition_type_item.stateChanged.connect(self.on_competition_type_changed)
+
+    def on_competition_type_changed(self):
+        is_all_russian = self.fields["is_all_russian_competition"].q_item.isChecked()
+        self.fields["is_best_team_placing_mode"].q_item.setEnabled(is_all_russian)
+        self.fields["is_best_team_placing_mode"].q_item.setChecked(False)
 
     def on_min_year_finished(self):
         self.change_year()
