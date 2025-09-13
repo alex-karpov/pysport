@@ -9,6 +9,7 @@
 + Import form SFRX files (SFR)
 + Course indexing by name
 + New "in list" operator in table filtering
++ Results of relay teams as in All-Russian competitions ([#495](https://github.com/sportorg/pysport/issues/495))
 
 ### Fixes
 + Fixed: multi day race processing - all days are refreshed on the file opening 
