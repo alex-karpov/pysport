@@ -237,6 +237,15 @@ class SportorgPrinter:
                     + split.speed
                     + " "
                 )
+                ROGAINE_PHOTO_CONTROLS = False
+                if ROGAINE_PHOTO_CONTROLS and split.time == result.get_start_time():
+                    line = (
+                        ("  " + str(split.course_index + 1))[-3:]
+                        + " "
+                        + ("  " + split.code)[-3:]
+                        + " "
+                        + f"ФОТО КП        "  # ФОТО КП
+                    )
 
                 if not is_relay:
                     line += ("  " + str(split.leg_place))[-3:]
