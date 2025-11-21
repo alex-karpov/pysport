@@ -1158,8 +1158,11 @@ class ResultSportident(Result):
             #     "_T": {"31": "32", "41": "42"},
             # }
             pairs = {  # 13 апреля 2025 г., Монумент Славы
-                "A": {"134": "150", "148": "149", "246": "256", "254": "258"},
-                "B": {"145": "155", "132": "148", "235": "241", "252": "254"},
+                "Мужчины": {"51": "50"},
+                "Женщины": {"51": "50"},
+                "ММ16": {"51": "50"},
+                "МЖ16": {"51": "50"},
+                "Дети": {"51": "50"},
             }
             pairs_on_course = pairs.get(course.name, {})
             # Добавить обратный порядок взятия: {31: 32} -> {31: 32, 32: 31}
@@ -1170,8 +1173,13 @@ class ResultSportident(Result):
             pair_intermediate_cp_index = -1
             pair_second_cp_code = ""
 
+            # Заменить севший КП
+            for i in self.splits:
+                if str(i.code) == "56":
+                    i.code = "41"
+
             # Разделить дистанцию на два круга (на случай одинаковых КП на разных кругах)
-            lap_cp_code = "70"
+            lap_cp_code = "370"
             courses_with_laps = ["A", "B"]
             if lap_cp_code and course.name in courses_with_laps:
                 is_first_lap = True

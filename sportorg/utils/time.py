@@ -105,7 +105,7 @@ def hhmmss_to_time(value):
     arr = str(value).split(":")
     if len(arr) == 3:
         msec = 0
-        secs = arr[2].split(".")
+        secs = arr[2].replace(".", ",").split(",")
         sec = int(secs[0])
         if len(secs) == 2:
             msec = int(secs[1])

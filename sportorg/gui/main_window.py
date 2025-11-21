@@ -1,3 +1,4 @@
+import csv
 import logging
 import os
 import time
@@ -42,6 +43,8 @@ from sportorg.models.memory import (
     NotEmptyException,
     Race,
     RaceType,
+    ResultSportident,
+    Split,
     get_current_race_index,
     new_event,
     race,
@@ -586,6 +589,31 @@ class MainWindow(QMainWindow):
             table = self.get_current_table()
         table.clearSelection()
 
+    def append_photo_controls(self, result: ResultSportident):
+        csv_filename = r"D:\ank\Orient\Competitions\2025\2025-07-05_Алтайский_рогейн\3_rogaine\rogaine_controls.csv"
+
+        team_bib = 0
+        if result.person and result.person.bib:
+            team_bib = result.person.bib // 10
+        else:
+            logging.warning(
+                "Cannot append photo controls for sicard %d, no bib number for result".format(
+                    result.card_number
+                )
+            )
+
+        with open(csv_filename, "r") as csv_file:
+            reader = csv.reader(csv_file, delimiter=";")
+            controls = list(reader)
+        team_controls = [row for row in controls if row[1] == str(team_bib)]
+        team_splits = []
+        for control in team_controls:
+            split = Split()
+            split.code = control[2]
+            split.time = result.get_start_time()
+            team_splits.append(split)
+        result.splits = team_splits + result.splits
+
     def add_sportident_result_from_sireader(self, result):
         try:
             assignment_mode = race().get_setting("system_assignment_mode", False)
@@ -595,7 +623,14 @@ class MainWindow(QMainWindow):
                 if rg.add_result():
                     result = rg.get_result()
                     group = result.person.group if result.person else None
-                    recalculate_results(recheck_results=False, group=group)
+
+                    ROGAINE_PHOTO_CONTROLS = False
+                    if ROGAINE_PHOTO_CONTROLS:
+                        self.append_photo_controls(result)
+
+                    recalculate_results(
+                        recheck_results=ROGAINE_PHOTO_CONTROLS, group=group
+                    )
                     if race().get_setting("split_printout", False):
                         try:
                             split_printout([result])

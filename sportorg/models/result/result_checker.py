@@ -56,7 +56,7 @@ class ResultChecker:
             return True
 
         if self.person.group.is_any_course:
-            return True
+            return result.check(course)
 
         return result.check(course)
 
@@ -419,7 +419,7 @@ class ResultChecker:
         """
         NOVOSIBIRSK_VYBOR = False
         if NOVOSIBIRSK_VYBOR:
-            forbidden_array = ["143", 143, "148", 148]
+            forbidden_array = ["160", 160, "148", 148]
 
         user_array = []
         score = 0
@@ -427,7 +427,7 @@ class ResultChecker:
         for cur_split in result.splits:
             code = str(cur_split.code)
             if NOVOSIBIRSK_VYBOR:
-                if score >= 13:
+                if score >= len(result.person.group.course.controls):
                     continue
                 if code not in set(user_array + forbidden_array) or allow_duplicates:
                     user_array.append(code)
