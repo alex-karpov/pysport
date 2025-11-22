@@ -1,7 +1,7 @@
 import pytest
 
 from sportorg.common.otime import OTime
-from sportorg.gui.dialogs.swimming_results import PoolTimeConverter
+from sportorg.gui.dialogs.swimming_results_old import PoolTimeConverter
 
 
 @pytest.mark.parametrize(
