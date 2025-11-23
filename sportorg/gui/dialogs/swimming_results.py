@@ -1,9 +1,16 @@
 import logging
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, QRegularExpression, Qt
+from PySide6.QtCore import (
+    QAbstractTableModel,
+    QModelIndex,
+    QPersistentModelIndex,
+    QRegularExpression,
+    Qt,
+)
 from PySide6.QtGui import QIntValidator, QRegularExpressionValidator
 from PySide6.QtWidgets import (
+    QApplication,
     QDialog,
     QDialogButtonBox,
     QLineEdit,
@@ -23,8 +30,10 @@ class InputIntDelegate(QStyledItemDelegate):
 
     def setEditorData(self, editor, index):
         # Populate editor with current display value and select all text
+        if not isinstance(editor, QLineEdit):
+            return
         try:
-            value = index.model().data(index, Qt.DisplayRole)
+            value = index.model().data(index, Qt.ItemDataRole.DisplayRole)
             if value is not None:
                 editor.setText(str(value))
                 editor.selectAll()
@@ -44,8 +53,10 @@ class PoolTimeDelegate(QStyledItemDelegate):
 
     def setEditorData(self, editor, index):
         # Populate editor with current display value and select all text
+        if not isinstance(editor, QLineEdit):
+            return
         try:
-            value = index.model().data(index, Qt.DisplayRole)
+            value = index.model().data(index, Qt.ItemDataRole.DisplayRole)
             if value is not None:
                 editor.setText(str(value))
                 editor.selectAll()
@@ -128,16 +139,20 @@ class SwimmingResultsModel(QAbstractTableModel):
                 }
             )
 
-    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
+    def rowCount(
+        self, parent: Union[QModelIndex, QPersistentModelIndex] = QModelIndex()
+    ) -> int:
         return len(self._rows)
 
-    def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
+    def columnCount(
+        self, parent: Union[QModelIndex, QPersistentModelIndex] = QModelIndex()
+    ) -> int:
         return 5
 
-    def headerData(self, section: int, orientation, role=Qt.DisplayRole):
-        if role != Qt.DisplayRole:
+    def headerData(self, section: int, orientation, role=Qt.ItemDataRole.DisplayRole):
+        if role != Qt.ItemDataRole.DisplayRole:
             return None
-        if orientation == Qt.Horizontal:
+        if orientation == Qt.Orientation.Horizontal:
             labels = [
                 translate("Input"),
                 translate("Result"),
@@ -148,7 +163,11 @@ class SwimmingResultsModel(QAbstractTableModel):
             return labels[section]
         return None
 
-    def data(self, index: QModelIndex, role=Qt.DisplayRole):
+    def data(
+        self,
+        index: Union[QModelIndex, QPersistentModelIndex],
+        role=Qt.ItemDataRole.DisplayRole,
+    ):
         if not index.isValid():
             return None
         row = index.row()
@@ -156,7 +175,7 @@ class SwimmingResultsModel(QAbstractTableModel):
         item = self._rows[row]
         person: Person = item["person"]
 
-        if role == Qt.DisplayRole:
+        if role == Qt.ItemDataRole.DisplayRole:
             if col == self.COL_INPUT:
                 return str(item.get("input_int", 0)) if item.get("input_int", 0) else ""
             elif col == self.COL_RESULT:
@@ -177,15 +196,20 @@ class SwimmingResultsModel(QAbstractTableModel):
 
         return None
 
-    def flags(self, index: QModelIndex):
+    def flags(self, index: Union[QModelIndex, QPersistentModelIndex]):
         if not index.isValid():
-            return Qt.ItemIsEnabled
-        base = Qt.ItemIsSelectable | Qt.ItemIsEnabled
+            return Qt.ItemFlag.ItemIsEnabled
+        base = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
         if index.column() in (self.COL_INPUT, self.COL_RESULT):
-            return base | Qt.ItemIsEditable
+            return base | Qt.ItemFlag.ItemIsEditable
         return base
 
-    def setData(self, index: QModelIndex, value, role=Qt.EditRole) -> bool:
+    def setData(
+        self,
+        index: Union[QModelIndex, QPersistentModelIndex],
+        value,
+        role=Qt.ItemDataRole.EditRole,
+    ) -> bool:
         if not index.isValid():
             return False
         row = index.row()
@@ -204,8 +228,10 @@ class SwimmingResultsModel(QAbstractTableModel):
                 item["modified"] = True
                 # Also update result cell
                 idx_result = self.index(row, self.COL_RESULT)
-                self.dataChanged.emit(index, index, [Qt.DisplayRole])
-                self.dataChanged.emit(idx_result, idx_result, [Qt.DisplayRole])
+                self.dataChanged.emit(index, index, [Qt.ItemDataRole.DisplayRole])
+                self.dataChanged.emit(
+                    idx_result, idx_result, [Qt.ItemDataRole.DisplayRole]
+                )
                 return True
             elif col == self.COL_RESULT:
                 str_value = str(value).strip() if value is not None else ""
@@ -219,13 +245,16 @@ class SwimmingResultsModel(QAbstractTableModel):
                 item["modified"] = True
                 # Also update input cell
                 idx_input = self.index(row, self.COL_INPUT)
-                self.dataChanged.emit(index, index, [Qt.DisplayRole])
-                self.dataChanged.emit(idx_input, idx_input, [Qt.DisplayRole])
+                self.dataChanged.emit(index, index, [Qt.ItemDataRole.DisplayRole])
+                self.dataChanged.emit(
+                    idx_input, idx_input, [Qt.ItemDataRole.DisplayRole]
+                )
                 return True
             else:
                 return False
         except ValueError as e:
-            QMessageBox.warning(None, translate("Invalid input"), str(e))
+            parent = QApplication.activeWindow()
+            QMessageBox.warning(parent, translate("Invalid input"), str(e))
             return False
 
     def get_row(self, row: int):
@@ -298,13 +327,15 @@ class SwimmingResultsDialog(QDialog):
         self.view.resizeColumnsToContents()
 
         button_box = QDialogButtonBox(
-            QDialogButtonBox.Ok | QDialogButtonBox.Apply | QDialogButtonBox.Cancel
+            QDialogButtonBox.StandardButton.Ok
+            | QDialogButtonBox.StandardButton.Apply
+            | QDialogButtonBox.StandardButton.Cancel
         )
-        self.button_ok = button_box.button(QDialogButtonBox.Ok)
+        self.button_ok = button_box.button(QDialogButtonBox.StandardButton.Ok)
         self.button_ok.setText(translate("OK"))
-        self.button_apply = button_box.button(QDialogButtonBox.Apply)
+        self.button_apply = button_box.button(QDialogButtonBox.StandardButton.Apply)
         self.button_apply.setText(translate("Apply"))
-        self.button_cancel = button_box.button(QDialogButtonBox.Cancel)
+        self.button_cancel = button_box.button(QDialogButtonBox.StandardButton.Cancel)
         self.button_cancel.setText(translate("Cancel"))
 
         button_box.accepted.connect(self.on_ok)
