@@ -14,11 +14,14 @@ from PySide6.QtWidgets import (
     QApplication,
     QDialog,
     QDialogButtonBox,
+    QHBoxLayout,
     QLineEdit,
     QMessageBox,
+    QPushButton,
     QStyledItemDelegate,
     QTableView,
     QVBoxLayout,
+    QWidget,
 )
 
 from sportorg.common.otime import OTime
@@ -341,7 +344,44 @@ class SwimmingResultsDialog(QDialog):
         self.setModal(True)
 
         self.race_obj = race()
-        # prepare data
+        self.current_heat: Optional[int] = None
+
+        # Navigation header (Текущий заплыв on left; controls centered)
+        self.header = QWidget(self)
+        header_layout = QHBoxLayout(self.header)
+
+        self.button_current = QPushButton(translate("Текущий заплыв"), self)
+        header_layout.addWidget(self.button_current)
+
+        # center group
+        center = QWidget(self)
+        center_layout = QHBoxLayout(center)
+        center_layout.setContentsMargins(0, 0, 0, 0)
+        self.button_first = QPushButton(self)
+        self.button_prev = QPushButton(self)
+        self.heat_input = QLineEdit(self)
+        self.heat_input.setValidator(QIntValidator(0, 999, self.heat_input))
+        self.heat_input.setFixedWidth(80)
+        self.button_next = QPushButton(self)
+        self.button_last = QPushButton(self)
+        for b in (
+            self.button_first,
+            self.button_prev,
+            self.button_next,
+            self.button_last,
+        ):
+            b.setFixedWidth(64)
+        center_layout.addWidget(self.button_first)
+        center_layout.addWidget(self.button_prev)
+        center_layout.addWidget(self.heat_input)
+        center_layout.addWidget(self.button_next)
+        center_layout.addWidget(self.button_last)
+
+        header_layout.addStretch()
+        header_layout.addWidget(center)
+        header_layout.addStretch()
+
+        # initial full-model load; model will be replaced by load_heat
         persons = sorted(self.race_obj.persons, key=lambda p: p.bib)
         results_map = {r.person.id: r for r in self.race_obj.results if r.person}
 
@@ -375,9 +415,40 @@ class SwimmingResultsDialog(QDialog):
         self.button_apply.clicked.connect(self.on_apply)
         button_box.rejected.connect(self.on_cancel)
 
+        # Reset button in the bottom area
+        self.button_reset = QPushButton(translate("Сбросить"), self)
+        button_box.addButton(self.button_reset, QDialogButtonBox.ButtonRole.ActionRole)
+        self.button_reset.clicked.connect(self.on_reset)
+
         layout = QVBoxLayout(self)
+        layout.addWidget(self.header)
         layout.addWidget(self.view)
         layout.addWidget(button_box)
+
+        # wire navigation signals
+        self.button_first.clicked.connect(
+            lambda: self.try_change_heat(self._first_heat)
+        )
+        self.button_prev.clicked.connect(lambda: self.try_change_heat(self._prev_heat))
+        self.button_next.clicked.connect(lambda: self.try_change_heat(self._next_heat))
+        self.button_last.clicked.connect(lambda: self.try_change_heat(self._last_heat))
+        self.button_current.clicked.connect(self.on_current_heat_requested)
+        self.heat_input.editingFinished.connect(self.on_heat_input_finished)
+
+        # connect model changes
+        try:
+            self.model.dataChanged.connect(self._on_model_changed)
+        except Exception:
+            pass
+
+        # nav state placeholders
+        self._first_heat = None
+        self._prev_heat = None
+        self._next_heat = None
+        self._last_heat = None
+
+        # pick initial heat: first unfinished, otherwise first available
+        self.load_initial_heat()
 
     def on_apply(self):
         try:
@@ -386,11 +457,234 @@ class SwimmingResultsDialog(QDialog):
             logging.exception("Error applying swimming results")
 
     def on_ok(self):
-        try:
-            self.model.apply_to_race(self.race_obj)
-        except Exception:
-            logging.exception("Error applying swimming results")
+        if self.has_unsaved_changes():
+            parent = QApplication.activeWindow()
+            msg = QMessageBox(parent)
+            msg.setWindowTitle(translate("Unsaved changes"))
+            msg.setText(translate("There are unsaved changes in the current heat."))
+            msg.setStandardButtons(
+                QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Cancel
+            )
+            res = msg.exec()
+            if res == QMessageBox.StandardButton.Save:
+                try:
+                    self.on_apply()
+                except Exception:
+                    logging.exception("Error applying swimming results")
+                    return
+            else:
+                return
         self.accept()
 
     def on_cancel(self):
+        if self.has_unsaved_changes():
+            parent = QApplication.activeWindow()
+            msg = QMessageBox(parent)
+            msg.setWindowTitle(translate("Unsaved changes"))
+            msg.setText(translate("There are unsaved changes in the current heat."))
+            msg.setStandardButtons(
+                QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Cancel
+            )
+            res = msg.exec()
+            if res == QMessageBox.StandardButton.Save:
+                try:
+                    self.on_apply()
+                except Exception:
+                    logging.exception("Error applying swimming results")
+                    return
+            else:
+                return
         self.reject()
+
+    def load_initial_heat(self):
+        heats = self.get_available_heats()
+        if not heats:
+            self.current_heat = None
+            self.update_nav_buttons()
+            return
+        first_unfinished = self.find_first_unfinished_heat()
+        chosen = first_unfinished if first_unfinished is not None else heats[0]
+        self.try_change_heat(chosen, force=True)
+
+    def get_available_heats(self) -> List[int]:
+        return sorted({p.start_group for p in self.race_obj.persons})
+
+    def find_first_unfinished_heat(self) -> Optional[int]:
+        heats = self.get_available_heats()
+        for h in heats:
+            persons = [p for p in self.race_obj.persons if p.start_group == h]
+            if not persons:
+                continue
+            any_with_result = False
+            for p in persons:
+                res = self.race_obj.find_person_result(p)
+                if res and getattr(res, "finish_time", None):
+                    any_with_result = True
+                    break
+            if not any_with_result:
+                return h
+        return None
+
+    def update_nav_buttons(self):
+        heats = self.get_available_heats()
+        if not heats:
+            self._first_heat = self._prev_heat = self._next_heat = self._last_heat = (
+                None
+            )
+        else:
+            self._first_heat = heats[0]
+            self._last_heat = heats[-1]
+            if self.current_heat is None:
+                idx = 0
+            else:
+                try:
+                    idx = heats.index(self.current_heat)
+                except ValueError:
+                    idx = 0
+            self._prev_heat = heats[idx - 1] if idx > 0 else None
+            self._next_heat = heats[idx + 1] if idx < len(heats) - 1 else None
+
+        def set_btn_text(btn, prefix, heat):
+            if heat is None:
+                btn.setText("")
+                btn.setEnabled(False)
+            else:
+                btn.setText(f"{prefix} {heat}")
+                btn.setEnabled(True)
+
+        set_btn_text(self.button_first, "<<", self._first_heat)
+        set_btn_text(self.button_prev, "<", self._prev_heat)
+        set_btn_text(self.button_next, ">", self._next_heat)
+        set_btn_text(self.button_last, ">>", self._last_heat)
+
+        if self.current_heat is None:
+            self.heat_input.setText("")
+        else:
+            self.heat_input.setText(str(self.current_heat))
+
+    def on_heat_input_finished(self):
+        txt = self.heat_input.text().strip()
+        if txt == "":
+            return
+        try:
+            new_heat = int(txt)
+        except Exception:
+            return
+        self.try_change_heat(new_heat)
+
+    def on_current_heat_requested(self):
+        h = self.find_first_unfinished_heat()
+        if h is None:
+            heats = self.get_available_heats()
+            h = heats[0] if heats else None
+        if h is not None:
+            self.try_change_heat(h)
+
+    def try_change_heat(self, new_heat: Optional[int], force: bool = False):
+        if new_heat == self.current_heat and not force:
+            return
+        if not force and self.has_unsaved_changes():
+            parent = QApplication.activeWindow()
+            msg = QMessageBox(parent)
+            msg.setWindowTitle(translate("Unsaved changes"))
+            msg.setText(translate("There are unsaved changes in the current heat."))
+            msg.setStandardButtons(
+                QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Cancel
+            )
+            res = msg.exec()
+            if res == QMessageBox.StandardButton.Save:
+                try:
+                    self.on_apply()
+                except Exception:
+                    logging.exception("Error applying changes before heat change")
+                    return
+            else:
+                if self.current_heat is not None:
+                    self.heat_input.setText(str(self.current_heat))
+                return
+        self.load_heat(new_heat)
+
+    def load_heat(self, start_group: Optional[int]):
+        if start_group is None:
+            persons = []
+            results_map = {}
+        else:
+            persons = sorted(
+                [p for p in self.race_obj.persons if p.start_group == start_group],
+                key=lambda p: p.bib,
+            )
+            results_map = {
+                r.person.id: r
+                for r in self.race_obj.results
+                if r.person and r.person.start_group == start_group
+            }
+
+        self.model = SwimmingResultsModel(persons, results_map, parent=self)
+        self.view.setModel(self.model)
+        self.view.setItemDelegateForColumn(
+            self.model.COL_INPUT, InputIntDelegate(self.view)
+        )
+        self.view.setItemDelegateForColumn(
+            self.model.COL_RESULT, PoolTimeDelegate(self.view)
+        )
+        self.view.resizeColumnsToContents()
+        try:
+            self.model.dataChanged.connect(self._on_model_changed)
+        except Exception:
+            pass
+
+        self.current_heat = start_group
+        if not persons:
+            self.heat_input.setStyleSheet("background: #fff0f0")
+        else:
+            self.heat_input.setStyleSheet("")
+
+        self.update_nav_buttons()
+        self._on_model_changed()
+
+    def has_unsaved_changes(self) -> bool:
+        try:
+            for row in getattr(self.model, "_rows", []):
+                if row.get("modified", False):
+                    return True
+        except Exception:
+            pass
+        return False
+
+    def _on_model_changed(self, *args, **kwargs):
+        has = self.has_unsaved_changes()
+        try:
+            self.button_apply.setEnabled(has)
+        except Exception:
+            pass
+        try:
+            self.button_reset.setEnabled(has)
+        except Exception:
+            pass
+
+    def on_reset(self):
+        # reload current heat from race_obj
+        self.load_heat(self.current_heat)
+
+    def closeEvent(self, arg__1):
+        event = arg__1
+        if self.has_unsaved_changes():
+            parent = QApplication.activeWindow()
+            msg = QMessageBox(parent)
+            msg.setWindowTitle(translate("Unsaved changes"))
+            msg.setText(translate("There are unsaved changes in the current heat."))
+            msg.setStandardButtons(
+                QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Cancel
+            )
+            res = msg.exec()
+            if res == QMessageBox.StandardButton.Save:
+                try:
+                    self.on_apply()
+                except Exception:
+                    logging.exception("Error applying changes on close")
+                    event.ignore()
+                    return
+            else:
+                event.ignore()
+                return
+        event.accept()
