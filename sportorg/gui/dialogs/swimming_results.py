@@ -6,6 +6,7 @@ from PySide6.QtCore import (
     QModelIndex,
     QPersistentModelIndex,
     QRegularExpression,
+    QSize,
     Qt,
 )
 from PySide6.QtGui import QIntValidator, QRegularExpressionValidator
@@ -316,6 +317,7 @@ class SwimmingResultsDialog(QDialog):
         self.model = SwimmingResultsModel(persons, results_map, parent=self)
 
         self.view = QTableView(self)
+        self.view.sizeHint = lambda: QSize(600, 500)
         self.view.setModel(self.model)
         # Set delegates for input/result columns
         self.view.setItemDelegateForColumn(
