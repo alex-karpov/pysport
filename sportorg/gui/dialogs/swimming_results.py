@@ -228,6 +228,10 @@ class SwimmingResultsModel(QAbstractTableModel):
                 return person.full_name
             elif col == self.COL_ORG:
                 return person.organization.name if person.organization else ""
+        # Align numeric columns to the right
+        if role == Qt.ItemDataRole.TextAlignmentRole:
+            if col in (self.COL_INPUT, self.COL_RESULT, self.COL_BIB):
+                return int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
         return None
 
