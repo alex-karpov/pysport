@@ -26,8 +26,10 @@ from PySide6.QtWidgets import (
 )
 
 from sportorg.common.otime import OTime
+from sportorg.gui.global_access import GlobalAccess
 from sportorg.language import translate
 from sportorg.models.memory import Limit, Person, Result, ResultManual, race
+from sportorg.models.result.result_tools import recalculate_results
 
 
 class PoolTimeConverter:
@@ -49,7 +51,7 @@ class PoolTimeConverter:
         return 0
 
     @staticmethod
-    def inout_to_otime(input_value: int) -> OTime:
+    def input_to_otime(input_value: int) -> OTime:
         if input_value:
             hour = input_value // 1000000
             minute = (input_value % 1000000) // 10000
@@ -61,11 +63,9 @@ class PoolTimeConverter:
     @staticmethod
     def input_to_str(input_value: int) -> str:
         if input_value:
-            otime = PoolTimeConverter.inout_to_otime(input_value)
-            minute = otime.hour * 60 + otime.minute
-            sec = otime.sec
-            hundreds = otime.msec // 10
-            return f"{minute:02}:{sec:02}.{hundreds:02}"
+            otime = PoolTimeConverter.input_to_otime(input_value)
+            time_accuracy = race().get_setting("time_accuracy", 0)
+            return otime.to_str(time_accuracy)[3:]  # type: ignore
         return "00:00.00"
 
 
@@ -282,13 +282,7 @@ class SwimmingResultsModel(QAbstractTableModel):
                 return str(item.get("input_int", 0)) if item.get("input_int", 0) else ""
             elif col == self.COL_RESULT:
                 input_int = item.get("input_int", 0)
-                if not input_int:
-                    return ""
-                otime = PoolTimeConverter.inout_to_otime(input_int)
-                minutes = otime.hour * 60 + otime.minute
-                seconds = otime.sec
-                hundreds = otime.msec // 10
-                return f"{minutes:02}:{seconds:02}.{hundreds:02}"
+                return PoolTimeConverter.input_to_str(input_int)
             elif col == self.COL_BIB:
                 return str(person.bib)
             elif col == self.COL_FULLNAME:
@@ -306,7 +300,7 @@ class SwimmingResultsModel(QAbstractTableModel):
         if not index.isValid():
             return Qt.ItemFlag.ItemIsEnabled
         base = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
-        if index.column() in (self.COL_INPUT, self.COL_RESULT):
+        if index.column() in (self.COL_INPUT, self.COL_BIB):
             return base | Qt.ItemFlag.ItemIsEditable
         return base
 
@@ -339,22 +333,20 @@ class SwimmingResultsModel(QAbstractTableModel):
                     idx_result, idx_result, [Qt.ItemDataRole.DisplayRole]
                 )
                 return True
-            elif col == self.COL_RESULT:
+            elif col == self.COL_BIB:
                 str_value = str(value).strip() if value is not None else ""
                 if str_value == "":
-                    otime = OTime()
-                    input_int = 0
+                    bib = 0
                 else:
-                    otime = parse_pool_time_str(str_value)
-                    input_int = PoolTimeConverter.otime_to_input(otime)
-                item["input_int"] = input_int
+                    bib = int(str_value)
+                    if bib < 0 or bib > Limit.BIB:
+                        raise ValueError(f"Bib must be between 0 and {Limit.BIB}")
+                item["bib"] = bib
+                item["person"].set_bib(bib)
+                if item["result"]:
+                    item["result"].bib = bib
                 item["modified"] = True
-                # Also update input cell
-                idx_input = self.index(row, self.COL_INPUT)
                 self.dataChanged.emit(index, index, [Qt.ItemDataRole.DisplayRole])
-                self.dataChanged.emit(
-                    idx_input, idx_input, [Qt.ItemDataRole.DisplayRole]
-                )
                 return True
             else:
                 return False
@@ -376,7 +368,7 @@ class SwimmingResultsModel(QAbstractTableModel):
             input_int = item.get("input_int", 0)
             # get OTime
             if input_int:
-                otime = PoolTimeConverter.inout_to_otime(input_int)
+                otime = PoolTimeConverter.input_to_otime(input_int)
             else:
                 otime = OTime()
 
@@ -406,6 +398,8 @@ class SwimmingResultsModel(QAbstractTableModel):
                 logging.exception(
                     "Failed to update counters after applying swimming results"
                 )
+        recalculate_results(recheck_results=False)
+        GlobalAccess().get_main_window().refresh()
 
 
 class SwimmingResultsDialog(QDialog):
@@ -465,9 +459,10 @@ class SwimmingResultsDialog(QDialog):
         self.view.setItemDelegateForColumn(
             self.model.COL_INPUT, InputIntDelegate(self.view)
         )
-        self.view.setItemDelegateForColumn(
-            self.model.COL_RESULT, PoolTimeDelegate(self.view)
-        )
+        # self.view.setItemDelegateForColumn(
+        #     self.model.COL_RESULT, PoolTimeDelegate(self.view)
+        # )
+        self.view.setItemDelegateForColumn(self.model.COL_BIB, BibDelegate(self.view))
         self.view.resizeColumnsToContents()
 
         button_box = QDialogButtonBox(
