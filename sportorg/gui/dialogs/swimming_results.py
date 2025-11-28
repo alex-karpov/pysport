@@ -179,88 +179,68 @@ class SwimmingResultsModel(QAbstractTableModel):
 
     POOL_SIZE = 6
 
-    HEADERS = ["Input", "Result", "Bib", "Full name", "Organization"]
+    HEADERS = [
+        translate("Input"),
+        translate("Result"),
+        translate("Bib"),
+        translate("Full name"),
+        translate("Organization"),
+    ]
 
     def __init__(
         self, persons: List[Person], results_map: dict, parent: Optional[Any] = None
     ):
         super().__init__(parent)
+        WRONG_LANE = -1
         lane_persons = defaultdict(list)
         for person in persons:
             if person.bib is None:
                 lane_persons[0].append(person)
             else:
                 lane = ((person.bib - 1) % 10) + 1
+                if lane <= 0 or lane > self.POOL_SIZE:
+                    lane = WRONG_LANE
                 lane_persons[lane].append(person)
 
-        # Compute max_slots for lanes 1-6
+        # Compute max_slots for main lanes
         max_slots = 0
         for lane in range(1, self.POOL_SIZE + 1):
             max_slots = max(max_slots, len(lane_persons[lane]))
 
         self._rows = []
 
-        # Padded lanes 1-6
+        # Padded main lanes
         for lane in range(1, self.POOL_SIZE + 1):
             lane_list = sorted(lane_persons[lane], key=lambda p: p.bib or 0)
             for person in lane_list:
-                res = results_map.get(person.id)
-                input_int = PoolTimeConverter.result_to_input(res)
-                self._rows.append(
-                    {
-                        "person": person,
-                        "result": res,
-                        "input_int": input_int,
-                        "modified": False,
-                        "lane": lane,
-                        "bib": person.bib,
-                    }
-                )
+                result = results_map.get(person.id)
+                self._rows.append(self._make_lane_record(person, result, lane))
+
             # Pad empty slots
             for _ in range(len(lane_list), max_slots):
-                self._rows.append(
-                    {
-                        "person": None,
-                        "result": None,
-                        "input_int": 0,
-                        "modified": False,
-                        "lane": lane,
-                        "bib": None,
-                    }
-                )
+                self._rows.append(self._make_lane_record(None, None, lane))
 
-        # Unpadded lanes 7-10
-        for lane in range(7, 11):
-            lane_list = sorted(lane_persons[lane], key=lambda p: p.bib or 0)
-            for person in lane_list:
-                res = results_map.get(person.id)
-                input_int = PoolTimeConverter.result_to_input(res)
-                self._rows.append(
-                    {
-                        "person": person,
-                        "result": res,
-                        "input_int": input_int,
-                        "modified": False,
-                        "lane": lane,
-                        "bib": person.bib,
-                    }
-                )
+        # Lane -1 at end
+        lane = WRONG_LANE
+        for person in lane_persons[lane]:
+            result = results_map.get(person.id)
+            self._rows.append(self._make_lane_record(person, result, lane))
 
-        # Lane 0 (bib=None) at end
-        lane_list = sorted(lane_persons[0], key=lambda p: getattr(p, "bib", 0) or 0)
-        for person in lane_list:
-            res = results_map.get(person.id)
-            input_int = PoolTimeConverter.result_to_input(res) if res else 0
-            self._rows.append(
-                {
-                    "person": person,
-                    "result": res,
-                    "input_int": input_int,
-                    "modified": False,
-                    "lane": 0,
-                    "bib": None,
-                }
-            )
+    def _make_lane_record(
+        self, person: Optional[Person], result: Optional[Result], lane: int = 0
+    ):
+        if not person:
+            person = Person()
+        input_int = PoolTimeConverter.result_to_input(result)
+        record = {
+            "person": person,
+            "result": result,
+            "input_int": input_int,
+            "modified": False,
+            "lane": lane,
+            "bib": person.bib,
+        }
+        return record
 
     def rowCount(
         self, parent: Union[QModelIndex, QPersistentModelIndex] = QModelIndex()
@@ -276,22 +256,13 @@ class SwimmingResultsModel(QAbstractTableModel):
         if role != Qt.ItemDataRole.DisplayRole:
             return None
         if orientation == Qt.Orientation.Horizontal:
-            labels = [
-                translate("Input"),
-                translate("Result"),
-                translate("Bib"),
-                translate("Full name"),
-                translate("Organization"),
-            ]
-            return labels[section]
+            return self.HEADERS[section]
         elif orientation == Qt.Orientation.Vertical:
             # Lane numbering
             row = section
             if 0 <= row < len(self._rows):
-                person: Person = self._rows[row]["person"] or Person()
-                bib = person.bib
-                if bib:
-                    return str(bib % 10)
+                lane = self._rows[row]["lane"]
+                return str(lane) if lane is not None else ""
         return None
 
     def data(
