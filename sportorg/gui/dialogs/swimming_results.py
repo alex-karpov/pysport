@@ -532,12 +532,11 @@ class SwimmingResultsDialog(QDialog):
     def update_nav_buttons(self):
         heats = self.get_available_heats()
         if not heats:
-            self._first_heat = self._prev_heat = self._next_heat = self._last_heat = (
-                None
-            )
+            self._first_heat = None
+            self._prev_heat = None
+            self._next_heat = None
+            self._last_heat = None
         else:
-            self._first_heat = heats[0]
-            self._last_heat = heats[-1]
             if self.current_heat is None:
                 idx = 0
             else:
@@ -545,26 +544,29 @@ class SwimmingResultsDialog(QDialog):
                     idx = heats.index(self.current_heat)
                 except ValueError:
                     idx = 0
+            self._first_heat = heats[0] if idx > 0 else None
             self._prev_heat = heats[idx - 1] if idx > 0 else None
+
+            self._last_heat = heats[-1] if idx < len(heats) - 1 else None
             self._next_heat = heats[idx + 1] if idx < len(heats) - 1 else None
 
-        def set_btn_text(btn, prefix, heat):
-            if heat is None:
-                btn.setText("")
-                btn.setEnabled(False)
-            else:
-                btn.setText(f"{prefix} {heat}")
-                btn.setEnabled(True)
-
-        set_btn_text(self.button_first, "<<", self._first_heat)
-        set_btn_text(self.button_prev, "<", self._prev_heat)
-        set_btn_text(self.button_next, ">", self._next_heat)
-        set_btn_text(self.button_last, ">>", self._last_heat)
+        self._set_btn_text(self.button_first, "<<", self._first_heat)
+        self._set_btn_text(self.button_prev, "<", self._prev_heat)
+        self._set_btn_text(self.button_next, ">", self._next_heat)
+        self._set_btn_text(self.button_last, ">>", self._last_heat)
 
         if self.current_heat is None:
             self.heat_input.setText("")
         else:
             self.heat_input.setText(str(self.current_heat))
+
+    def _set_btn_text(self, btn, prefix, heat):
+        if heat is None:
+            btn.setText("")
+            btn.setEnabled(False)
+        else:
+            btn.setText(f"{prefix} {heat}")
+            btn.setEnabled(True)
 
     def on_heat_input_finished(self):
         txt = self.heat_input.text().strip()
