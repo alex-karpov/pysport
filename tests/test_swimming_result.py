@@ -35,7 +35,7 @@ def test_otime_to_input(otime, expected_input):
     ],
 )
 def test_input_to_otime(input, expected_otime):
-    result = PoolTimeConverter.inout_to_otime(input)
+    result = PoolTimeConverter.input_to_otime(input)
     assert result == expected_otime
 
 
