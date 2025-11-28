@@ -196,6 +196,14 @@ class SwimmingResultsModel(QAbstractTableModel):
                 translate("Organization"),
             ]
             return labels[section]
+        elif orientation == Qt.Orientation.Vertical:
+            # Lane numbering
+            row = section
+            if 0 <= row < len(self._rows):
+                person: Person = self._rows[row]["person"]
+                bib = person.bib
+                if bib is not None:
+                    return str(bib % 10)
         return None
 
     def data(
