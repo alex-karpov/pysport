@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from typing import Any, List, Optional, Union
 
 from PySide6.QtCore import (
@@ -26,12 +27,12 @@ from PySide6.QtWidgets import (
 
 from sportorg.common.otime import OTime
 from sportorg.language import translate
-from sportorg.models.memory import Person, ResultManual, race
+from sportorg.models.memory import Limit, Person, Result, ResultManual, race
 
 
 class PoolTimeConverter:
     @staticmethod
-    def otime_to_input(otime: OTime) -> int:
+    def otime_to_input(otime: Optional[OTime]) -> int:
         if otime:
             return (
                 otime.hour * 1000000
@@ -39,6 +40,12 @@ class PoolTimeConverter:
                 + otime.sec * 100
                 + otime.msec // 10
             )
+        return 0
+
+    @staticmethod
+    def result_to_input(result: Optional[Result]) -> int:
+        if result and result.finish_time:
+            return PoolTimeConverter.otime_to_input(result.finish_time)
         return 0
 
     @staticmethod
@@ -105,6 +112,25 @@ class PoolTimeDelegate(QStyledItemDelegate):
             pass
 
 
+class BibDelegate(QStyledItemDelegate):
+    def createEditor(self, parent, option, index):
+        editor = QLineEdit(parent)
+        validator = QIntValidator(0, Limit.BIB, editor)
+        editor.setValidator(validator)
+        return editor
+
+    def setEditorData(self, editor, index):
+        if not isinstance(editor, QLineEdit):
+            return
+        try:
+            value = index.model().data(index, Qt.ItemDataRole.DisplayRole)
+            if value is not None:
+                editor.setText(str(value))
+                editor.selectAll()
+        except Exception:
+            pass
+
+
 def parse_pool_time_str(s: str) -> OTime:
     """Parse string like 'mm:ss.hh' into OTime.
 
@@ -151,26 +177,88 @@ class SwimmingResultsModel(QAbstractTableModel):
     COL_FULLNAME = 3
     COL_ORG = 4
 
+    POOL_SIZE = 6
+
     HEADERS = ["Input", "Result", "Bib", "Full name", "Organization"]
 
     def __init__(
         self, persons: List[Person], results_map: dict, parent: Optional[Any] = None
     ):
         super().__init__(parent)
-        # rows: list of dict {person, result, input_int, modified}
-        self._rows = []
-        for p in persons:
-            res = results_map.get(p.id)
-            if res and getattr(res, "finish_time", None):
-                input_int = PoolTimeConverter.otime_to_input(res.finish_time)
+        lane_persons = defaultdict(list)
+        for person in persons:
+            if person.bib is None:
+                lane_persons[0].append(person)
             else:
-                input_int = 0
+                lane = ((person.bib - 1) % 10) + 1
+                lane_persons[lane].append(person)
+
+        # Compute max_slots for lanes 1-6
+        max_slots = 0
+        for lane in range(1, self.POOL_SIZE + 1):
+            max_slots = max(max_slots, len(lane_persons[lane]))
+
+        self._rows = []
+
+        # Padded lanes 1-6
+        for lane in range(1, self.POOL_SIZE + 1):
+            lane_list = sorted(lane_persons[lane], key=lambda p: p.bib or 0)
+            for person in lane_list:
+                res = results_map.get(person.id)
+                input_int = PoolTimeConverter.result_to_input(res)
+                self._rows.append(
+                    {
+                        "person": person,
+                        "result": res,
+                        "input_int": input_int,
+                        "modified": False,
+                        "lane": lane,
+                        "bib": person.bib,
+                    }
+                )
+            # Pad empty slots
+            for _ in range(len(lane_list), max_slots):
+                self._rows.append(
+                    {
+                        "person": None,
+                        "result": None,
+                        "input_int": 0,
+                        "modified": False,
+                        "lane": lane,
+                        "bib": None,
+                    }
+                )
+
+        # Unpadded lanes 7-10
+        for lane in range(7, 11):
+            lane_list = sorted(lane_persons[lane], key=lambda p: p.bib or 0)
+            for person in lane_list:
+                res = results_map.get(person.id)
+                input_int = PoolTimeConverter.result_to_input(res)
+                self._rows.append(
+                    {
+                        "person": person,
+                        "result": res,
+                        "input_int": input_int,
+                        "modified": False,
+                        "lane": lane,
+                        "bib": person.bib,
+                    }
+                )
+
+        # Lane 0 (bib=None) at end
+        lane_list = sorted(lane_persons[0], key=lambda p: getattr(p, "bib", 0) or 0)
+        for person in lane_list:
+            res = results_map.get(person.id)
+            input_int = PoolTimeConverter.result_to_input(res) if res else 0
             self._rows.append(
                 {
-                    "person": p,
+                    "person": person,
                     "result": res,
                     "input_int": input_int,
                     "modified": False,
+                    "lane": 0,
+                    "bib": None,
                 }
             )
 
@@ -200,9 +288,9 @@ class SwimmingResultsModel(QAbstractTableModel):
             # Lane numbering
             row = section
             if 0 <= row < len(self._rows):
-                person: Person = self._rows[row]["person"]
+                person: Person = self._rows[row]["person"] or Person()
                 bib = person.bib
-                if bib is not None:
+                if bib:
                     return str(bib % 10)
         return None
 
@@ -216,7 +304,7 @@ class SwimmingResultsModel(QAbstractTableModel):
         row = index.row()
         col = index.column()
         item = self._rows[row]
-        person: Person = item["person"]
+        person: Person = item["person"] or Person()
 
         if role == Qt.ItemDataRole.DisplayRole:
             if col == self.COL_INPUT:
@@ -525,15 +613,7 @@ class SwimmingResultsDialog(QDialog):
         heats = self.get_available_heats()
         for h in heats:
             persons = [p for p in self.race_obj.persons if p.start_group == h]
-            if not persons:
-                continue
-            any_with_result = False
-            for p in persons:
-                res = self.race_obj.find_person_result(p)
-                if res and getattr(res, "finish_time", None):
-                    any_with_result = True
-                    break
-            if not any_with_result:
+            if not any([self.race_obj.find_person_result(p) for p in persons]):
                 return h
         return None
 
