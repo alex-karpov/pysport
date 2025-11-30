@@ -30,6 +30,8 @@ from sportorg.gui.global_access import GlobalAccess
 from sportorg.language import translate
 from sportorg.models.memory import Limit, Person, Result, ResultManual, race
 from sportorg.models.result.result_tools import recalculate_results
+from sportorg.modules.live.live import live_client
+from sportorg.modules.teamwork.teamwork import Teamwork
 
 # TODO:
 # * [ ] Проверить, проработать фокус ввода
@@ -48,8 +50,8 @@ from sportorg.models.result.result_tools import recalculate_results
 #   * [ ] Apply
 #   * [ ] Полное наименование = Фамилия, имя
 #   * [ ] Текущий заплыв = Текущий
-# * [ ] Отправка результатов онлайн
-#   * [ ] В нужном порядке, чтобы первые пять были с лучшим результатом
+# * [+] Отправка результатов онлайн
+#   * [+] В нужном порядке, чтобы первые пять были с лучшим результатом
 # * [ ] Обработка DNS и DNF
 # * [ ] Окно настроек
 #   * [ ] Количество дорожек
@@ -61,6 +63,7 @@ from sportorg.models.result.result_tools import recalculate_results
 #   * [ ] Более компактные кнопки << < > >>
 #   * [ ] Более крупный Input
 #   * [ ] Адекватные размеры окна
+# * [ ] Создание SwimmingResultsModel() в __init__() лишнее? Создаётся в load_heat() сразу после этого
 
 
 class PoolTimeConverter:
@@ -391,8 +394,9 @@ class SwimmingResultsModel(QAbstractTableModel):
 
     def apply_to_race(self, race_obj):
         """Apply modified rows into given race() object (in-memory)."""
-        changed = False
-        for item in self._rows:
+        has_changes = False
+        changed_results = []
+        for item in reversed(self._rows):
             if not item.get("modified", False):
                 continue
             person: Person = item["person"]
@@ -409,7 +413,7 @@ class SwimmingResultsModel(QAbstractTableModel):
                 existing.finish_time = otime
                 existing.person = person
                 existing.bib = person.bib
-                changed = True
+                has_changes = True
             else:
                 # create new manual result if input not zero OR create even for zero as requested
                 new_res = race_obj.new_result(ResultManual)
@@ -417,20 +421,20 @@ class SwimmingResultsModel(QAbstractTableModel):
                 new_res.finish_time = otime
                 new_res.bib = person.bib
                 race_obj.add_new_result(new_res)
-                changed = True
+                has_changes = True
 
             # mark as applied
+            changed_results.append(existing or new_res)
             item["modified"] = False
 
-        if changed:
-            try:
-                race_obj.update_counters()
-            except Exception:
-                logging.exception(
-                    "Failed to update counters after applying swimming results"
-                )
-        recalculate_results(recheck_results=False)
-        GlobalAccess().get_main_window().refresh()
+        if has_changes:
+            race_obj.update_counters()
+            recalculate_results(recheck_results=False)
+            live_client.send(
+                sorted(changed_results, key=lambda r: r.get_result(), reverse=True)
+            )
+            Teamwork().send([r.to_dict() for r in changed_results])
+            GlobalAccess().get_main_window().refresh()
 
 
 class SwimmingResultsDialog(QDialog):
@@ -533,10 +537,7 @@ class SwimmingResultsDialog(QDialog):
         self.heat_input.editingFinished.connect(self.on_heat_input_finished)
 
         # connect model changes
-        try:
-            self.model.dataChanged.connect(self._on_model_changed)
-        except Exception:
-            pass
+        self.model.dataChanged.connect(self._update_bottom_buttons)
 
         # nav state placeholders
         self._first_heat = None
@@ -552,6 +553,7 @@ class SwimmingResultsDialog(QDialog):
             self.model.apply_to_race(self.race_obj)
         except Exception:
             logging.exception("Error applying swimming results")
+        self._update_bottom_buttons()
 
     def on_ok(self):
         if self.has_unsaved_changes():
@@ -597,7 +599,7 @@ class SwimmingResultsDialog(QDialog):
         heats = self.get_available_heats()
         if not heats:
             self.current_heat = None
-            self.update_nav_buttons()
+            self._update_nav_buttons()
             return
         first_unfinished = self.find_first_unfinished_heat()
         chosen = first_unfinished if first_unfinished is not None else heats[0]
@@ -614,7 +616,12 @@ class SwimmingResultsDialog(QDialog):
                 return h
         return None
 
-    def update_nav_buttons(self):
+    def _update_bottom_buttons(self):
+        has_unsaved_changes = self.has_unsaved_changes()
+        self.button_apply.setEnabled(has_unsaved_changes)
+        self.button_reset.setEnabled(has_unsaved_changes)
+
+    def _update_nav_buttons(self):
         heats = self.get_available_heats()
         if not heats:
             self._first_heat = None
@@ -711,7 +718,9 @@ class SwimmingResultsDialog(QDialog):
             }
 
         self.model = SwimmingResultsModel(persons, results_map, parent=self)
+        self.model.dataChanged.connect(self._update_bottom_buttons)
         self.view.setModel(self.model)
+
         self.view.setItemDelegateForColumn(
             self.model.COL_INPUT, InputIntDelegate(self.view)
         )
@@ -719,10 +728,6 @@ class SwimmingResultsDialog(QDialog):
             self.model.COL_RESULT, PoolTimeDelegate(self.view)
         )
         self.view.resizeColumnsToContents()
-        try:
-            self.model.dataChanged.connect(self._on_model_changed)
-        except Exception:
-            pass
 
         self.current_heat = start_group
         if not persons:
@@ -730,8 +735,8 @@ class SwimmingResultsDialog(QDialog):
         else:
             self.heat_input.setStyleSheet("")
 
-        self.update_nav_buttons()
-        self._on_model_changed()
+        self._update_nav_buttons()
+        self._update_bottom_buttons()
 
     def has_unsaved_changes(self) -> bool:
         try:
@@ -741,17 +746,6 @@ class SwimmingResultsDialog(QDialog):
         except Exception:
             pass
         return False
-
-    def _on_model_changed(self, *args, **kwargs):
-        has = self.has_unsaved_changes()
-        try:
-            self.button_apply.setEnabled(has)
-        except Exception:
-            pass
-        try:
-            self.button_reset.setEnabled(has)
-        except Exception:
-            pass
 
     def on_reset(self):
         # reload current heat from race_obj
