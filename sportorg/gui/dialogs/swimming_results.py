@@ -408,31 +408,29 @@ class SwimmingResultsModel(QAbstractTableModel):
                 otime = OTime()
 
             # find existing result
-            existing = race_obj.find_person_result(person)
-            if existing:
-                existing.finish_time = otime
-                existing.person = person
-                existing.bib = person.bib
+            result = race_obj.find_person_result(person)
+            if result:
+                result.finish_time = otime
+                result.person = person
+                result.bib = person.bib
                 has_changes = True
             else:
                 # create new manual result if input not zero OR create even for zero as requested
-                new_res = race_obj.new_result(ResultManual)
-                new_res.person = person
-                new_res.finish_time = otime
-                new_res.bib = person.bib
-                race_obj.add_new_result(new_res)
+                result = race_obj.new_result(ResultManual)
+                result.person = person
+                result.finish_time = otime
+                result.bib = person.bib
+                race_obj.add_new_result(result)
                 has_changes = True
 
-            # mark as applied
-            changed_results.append(existing or new_res)
+            changed_results.append(result)
             item["modified"] = False
 
         if has_changes:
             race_obj.update_counters()
             recalculate_results(recheck_results=False)
-            live_client.send(
-                sorted(changed_results, key=lambda r: r.get_result(), reverse=True)
-            )
+            data = sorted(changed_results, key=lambda r: r.get_result(), reverse=True)
+            live_client.send(data)
             Teamwork().send([r.to_dict() for r in changed_results])
             GlobalAccess().get_main_window().refresh()
 
