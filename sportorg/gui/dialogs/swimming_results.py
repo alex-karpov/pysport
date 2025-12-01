@@ -28,7 +28,14 @@ from PySide6.QtWidgets import (
 from sportorg.common.otime import OTime
 from sportorg.gui.global_access import GlobalAccess
 from sportorg.language import translate
-from sportorg.models.memory import Limit, Person, Result, ResultManual, race
+from sportorg.models.memory import (
+    Limit,
+    Person,
+    Result,
+    ResultManual,
+    ResultStatus,
+    race,
+)
 from sportorg.models.result.result_tools import recalculate_results
 from sportorg.modules.live.live import live_client
 from sportorg.modules.teamwork.teamwork import Teamwork
@@ -52,10 +59,10 @@ from sportorg.modules.teamwork.teamwork import Teamwork
 #   * [ ] Текущий заплыв = Текущий
 # * [+] Отправка результатов онлайн
 #   * [+] В нужном порядке, чтобы первые пять были с лучшим результатом
-# * [ ] Обработка DNS и DNF
+# * [+] Обработка DNS и DNF
 # * [ ] Окно настроек
 #   * [ ] Количество дорожек
-#   * [ ] Сохранять в настройках программы
+#   * [ ] Сохранять в настройках SportOrg
 # * [ ] Столбец: группа
 # * [ ] Столбец: место / финишировало / всего
 # * [ ] Стили
@@ -64,6 +71,30 @@ from sportorg.modules.teamwork.teamwork import Teamwork
 #   * [ ] Более крупный Input
 #   * [ ] Адекватные размеры окна
 # * [ ] Создание SwimmingResultsModel() в __init__() лишнее? Создаётся в load_heat() сразу после этого
+
+# Supported status inputs (case-insensitive)
+DNS_INPUTS = {"dns", "днс", "нстарт", "н/старт"}
+DNF_INPUTS = {"dnf", "днф", "н/финиш"}
+
+
+def parse_status_input(input: str):
+    """Parse a status string input and return a tuple (status_enum, comment, finish_otime) or None.
+
+    Accepts many variants, returns the canonical ResultStatus and string comment (DNS/DNF)
+    and finish time 23:59:59.00.
+    """
+    if not input:
+        return None
+    input = str(input).strip().lower()
+    if input in DNS_INPUTS:
+        # DID_NOT_START
+        finish = OTime(hour=23, minute=59, sec=59, msec=0)
+        return (ResultStatus.DID_NOT_START, "DNS", finish)
+    if input in DNF_INPUTS:
+        # DID_NOT_FINISH
+        finish = OTime(hour=23, minute=59, sec=59, msec=0)
+        return (ResultStatus.DID_NOT_FINISH, "DNF", finish)
+    return None
 
 
 class PoolTimeConverter:
@@ -135,6 +166,29 @@ class PoolTimeDelegate(QStyledItemDelegate):
 
     def setEditorData(self, editor, index):
         # Populate editor with current display value and select all text
+        if not isinstance(editor, QLineEdit):
+            return
+        try:
+            value = index.model().data(index, Qt.ItemDataRole.DisplayRole)
+            if value is not None:
+                editor.setText(str(value))
+                editor.selectAll()
+        except Exception:
+            pass
+
+
+class InputDelegate(QStyledItemDelegate):
+    """Delegate for Input column: accepts integers, mm:ss.hh format, or status strings like DNS/DNF."""
+
+    def createEditor(self, parent, option, index):
+        editor = QLineEdit(parent)
+        # Accept integer digits, mm:ss.hh or status words (latin/cyrillic, slashes)
+        regex = QRegularExpression(r"^[0-9]+$|^[A-Za-zА-Яа-я/\\]+$")
+        validator = QRegularExpressionValidator(regex, editor)
+        editor.setValidator(validator)
+        return editor
+
+    def setEditorData(self, editor, index):
         if not isinstance(editor, QLineEdit):
             return
         try:
@@ -265,11 +319,20 @@ class SwimmingResultsModel(QAbstractTableModel):
     ):
         if not person:
             person = Person()
-        input_int = PoolTimeConverter.result_to_input(result)
+        # Default input is numeric code for OTime when result is OK
+        if result and not result.is_status_ok():
+            input_int = 0
+            input_status = result.status_comment or (
+                result.status.get_title() if result.status else ""
+            )
+        else:
+            input_int = PoolTimeConverter.result_to_input(result)
+            input_status = None
         record = {
             "person": person,
             "result": result,
             "input_int": input_int,
+            "input_status": input_status,
             "modified": False,
             "lane": lane,
             "bib": person.bib,
@@ -313,8 +376,22 @@ class SwimmingResultsModel(QAbstractTableModel):
 
         if role == Qt.ItemDataRole.DisplayRole:
             if col == self.COL_INPUT:
+                # If user or initial result marked a status (DNS/DNF), display it in Input column
+                status_text = item.get("input_status")
+                if status_text:
+                    return status_text
                 return str(item.get("input_int", 0)) if item.get("input_int", 0) else ""
             elif col == self.COL_RESULT:
+                # If there is an in-progress input status, show it as preview
+                status_text = item.get("input_status")
+                if status_text:
+                    return status_text
+                # If stored result is present but shows non-ok, display its status_comment
+                result = item.get("result")
+                if result and not result.is_status_ok():
+                    return result.status_comment or (
+                        result.status.get_title() if result.status else ""
+                    )
                 input_int = item.get("input_int", 0)
                 return PoolTimeConverter.input_to_str(input_int)
             elif col == self.COL_BIB:
@@ -354,10 +431,38 @@ class SwimmingResultsModel(QAbstractTableModel):
                 str_value = str(value).strip() if value is not None else ""
                 if str_value == "":
                     input_int = 0
+                    item["input_status"] = None
                 else:
-                    input_int = int(str_value)
-                    if input_int < 0:
-                        raise ValueError("Input must be non-negative integer")
+                    # Check for status inputs (dns/dnf variants)
+                    status_parsed = parse_status_input(str_value)
+                    if status_parsed:
+                        # status_parsed = (ResultStatus, comment, finish_otime)
+                        item["input_int"] = 0
+                        item["input_status"] = status_parsed[1]
+                        item["modified"] = True
+                        # update result cell preview
+                        idx_result = self.index(row, self.COL_RESULT)
+                        self.dataChanged.emit(
+                            index, index, [Qt.ItemDataRole.DisplayRole]
+                        )
+                        self.dataChanged.emit(
+                            idx_result, idx_result, [Qt.ItemDataRole.DisplayRole]
+                        )
+                        return True
+                    # Try mm:ss.hh format
+                    if ":" in str_value:
+                        try:
+                            otime = parse_pool_time_str(str_value)
+                            input_int = PoolTimeConverter.otime_to_input(otime)
+                        except ValueError as ve:
+                            raise ValueError(str(ve))
+                    else:
+                        # fallback to numeric digits
+                        input_int = int(str_value)
+                        if input_int < 0:
+                            raise ValueError("Input must be non-negative integer")
+                    # numeric time -> clear status
+                    item["input_status"] = None
                 item["input_int"] = input_int
                 item["modified"] = True
                 # Also update result cell
@@ -401,16 +506,37 @@ class SwimmingResultsModel(QAbstractTableModel):
                 continue
             person: Person = item["person"]
             input_int = item.get("input_int", 0)
-            # get OTime
-            if input_int:
-                otime = PoolTimeConverter.input_to_otime(input_int)
+            # get OTime and status
+            status_preview = item.get("input_status")
+            if status_preview:
+                # map preview to actual status (DNS/DNF)
+                parsed = parse_status_input(status_preview)
+                if parsed:
+                    _, comment, finish_otime = parsed
+                    otime = finish_otime
+                else:
+                    otime = OTime()
             else:
-                otime = OTime()
+                if input_int:
+                    otime = PoolTimeConverter.input_to_otime(input_int)
+                else:
+                    otime = OTime()
 
             # find existing result
             result = race_obj.find_person_result(person)
             if result:
                 result.finish_time = otime
+                # set the status/comment based on input
+                if status_preview:
+                    parsed = parse_status_input(status_preview)
+                    if parsed:
+                        status_enum, comment, _ = parsed
+                        result.status = status_enum
+                        result.status_comment = comment
+                else:
+                    # Numeric time -> mark as OK
+                    result.status = ResultStatus.OK
+                    result.status_comment = ""
                 result.person = person
                 result.bib = person.bib
                 has_changes = True
@@ -419,6 +545,15 @@ class SwimmingResultsModel(QAbstractTableModel):
                 result = race_obj.new_result(ResultManual)
                 result.person = person
                 result.finish_time = otime
+                if status_preview:
+                    parsed = parse_status_input(status_preview)
+                    if parsed:
+                        status_enum, comment, _ = parsed
+                        result.status = status_enum
+                        result.status_comment = comment
+                else:
+                    result.status = ResultStatus.OK
+                    result.status_comment = ""
                 result.bib = person.bib
                 race_obj.add_new_result(result)
                 has_changes = True
@@ -432,7 +567,11 @@ class SwimmingResultsModel(QAbstractTableModel):
             data = sorted(changed_results, key=lambda r: r.get_result(), reverse=True)
             live_client.send(data)
             Teamwork().send([r.to_dict() for r in changed_results])
-            GlobalAccess().get_main_window().refresh()
+            app_obj = GlobalAccess().get_app()
+            if app_obj is not None:
+                main_window = app_obj.get_main_window()
+                if main_window is not None:
+                    main_window.refresh()
 
 
 class SwimmingResultsDialog(QDialog):
@@ -490,7 +629,7 @@ class SwimmingResultsDialog(QDialog):
         self.view.setModel(self.model)
         # Set delegates for input/result columns
         self.view.setItemDelegateForColumn(
-            self.model.COL_INPUT, InputIntDelegate(self.view)
+            self.model.COL_INPUT, InputDelegate(self.view)
         )
         # self.view.setItemDelegateForColumn(
         #     self.model.COL_RESULT, PoolTimeDelegate(self.view)
@@ -720,7 +859,7 @@ class SwimmingResultsDialog(QDialog):
         self.view.setModel(self.model)
 
         self.view.setItemDelegateForColumn(
-            self.model.COL_INPUT, InputIntDelegate(self.view)
+            self.model.COL_INPUT, InputDelegate(self.view)
         )
         self.view.setItemDelegateForColumn(
             self.model.COL_RESULT, PoolTimeDelegate(self.view)
