@@ -1,5 +1,5 @@
 import logging
-from ast import mod
+from ast import arg, mod
 from collections import defaultdict
 from typing import Any, List, Optional, Union
 
@@ -731,6 +731,9 @@ class SwimmingResultsDialog(QDialog):
                 if row < self.model.rowCount() - 1:
                     self.view.setCurrentIndex(self.model.index(row + 1, col))
                 return True
+            elif event.key() == Qt.Key.Key_Escape:
+                self.on_cancel()
+                return True
 
         return super().eventFilter(obj, event)
 
@@ -746,19 +749,13 @@ class SwimmingResultsDialog(QDialog):
             parent = QApplication.activeWindow()
             msg = QMessageBox(parent)
             msg.setWindowTitle(translate("Unsaved changes"))
-            msg.setText(translate("There are unsaved changes in the current heat."))
+            msg.setText(translate("Do you want to save changes before closing?"))
             msg.setStandardButtons(
-                QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Cancel
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
             )
             res = msg.exec()
-            if res == QMessageBox.StandardButton.Save:
-                try:
-                    self.on_apply()
-                except Exception:
-                    logging.exception("Error applying swimming results")
-                    return
-            else:
-                return
+            if res == QMessageBox.StandardButton.Yes:
+                self.on_apply()
         self.accept()
 
     def on_cancel(self):
@@ -766,20 +763,9 @@ class SwimmingResultsDialog(QDialog):
             parent = QApplication.activeWindow()
             msg = QMessageBox(parent)
             msg.setWindowTitle(translate("Unsaved changes"))
-            msg.setText(translate("There are unsaved changes in the current heat."))
-            msg.setStandardButtons(
-                QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Cancel
-            )
-            res = msg.exec()
-            if res == QMessageBox.StandardButton.Save:
-                try:
-                    self.on_apply()
-                except Exception:
-                    logging.exception("Error applying swimming results")
-                    return
-            else:
-                return
-        self.reject()
+            msg.setText(translate("You need to apply changes before closing"))
+            msg.setStandardButtons(QMessageBox.StandardButton.Ok)
+            msg.exec()
 
     def load_initial_heat(self):
         heats = self.get_available_heats()
@@ -956,24 +942,6 @@ class SwimmingResultsDialog(QDialog):
         self.load_heat(self.current_heat)
 
     def closeEvent(self, arg__1):
+        self.on_cancel()
         event = arg__1
-        if self.has_unsaved_changes():
-            parent = QApplication.activeWindow()
-            msg = QMessageBox(parent)
-            msg.setWindowTitle(translate("Unsaved changes"))
-            msg.setText(translate("There are unsaved changes in the current heat."))
-            msg.setStandardButtons(
-                QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Cancel
-            )
-            res = msg.exec()
-            if res == QMessageBox.StandardButton.Save:
-                try:
-                    self.on_apply()
-                except Exception:
-                    logging.exception("Error applying changes on close")
-                    event.ignore()
-                    return
-            else:
-                event.ignore()
-                return
-        event.accept()
+        event.ignore()
