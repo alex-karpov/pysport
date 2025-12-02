@@ -156,9 +156,9 @@ def test_try_change_heat_prompts_and_honors_save_cancel(monkeypatch):
     )
 
     # attempt change: should cancel and keep current heat
-    old_heat = dlg.current_heat
+    old_heat = dlg.heat_current
     dlg.try_change_heat(2)
-    assert dlg.current_heat == old_heat
+    assert dlg.heat_current == old_heat
 
     # now simulate Save
     class FakeMsgSave(FakeMsgCancel):
@@ -175,4 +175,4 @@ def test_try_change_heat_prompts_and_honors_save_cancel(monkeypatch):
 
     dlg.try_change_heat(2)
     # after saving, heat should change
-    assert dlg.current_heat == 2
+    assert dlg.heat_current == 2

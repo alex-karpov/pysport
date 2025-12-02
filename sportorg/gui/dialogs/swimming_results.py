@@ -1,5 +1,4 @@
 import logging
-from ast import arg, mod
 from collections import defaultdict
 from typing import Any, List, Optional, Union
 
@@ -87,26 +86,6 @@ from sportorg.modules.teamwork.teamwork import Teamwork
 # Supported status inputs (case-insensitive)
 DNS_INPUTS = {"dns", "днс", "нстарт", "н/старт"}
 DNF_INPUTS = {"dnf", "днф", "н/финиш"}
-
-
-def parse_status_input(input: str):
-    """Parse a status string input and return a tuple (status_enum, comment, finish_otime) or None.
-
-    Accepts many variants, returns the canonical ResultStatus and string comment (DNS/DNF)
-    and finish time 23:59:59.00.
-    """
-    if not input:
-        return None
-    input = str(input).strip().lower()
-    if input in DNS_INPUTS:
-        # DID_NOT_START
-        finish = OTime(hour=23, minute=59, sec=59, msec=0)
-        return (ResultStatus.DID_NOT_START, "DNS", finish)
-    if input in DNF_INPUTS:
-        # DID_NOT_FINISH
-        finish = OTime(hour=23, minute=59, sec=59, msec=0)
-        return (ResultStatus.DID_NOT_FINISH, "DNF", finish)
-    return None
 
 
 class PoolTimeConverter:
@@ -284,6 +263,9 @@ class SwimmingResultsModel(QAbstractTableModel):
         translate("Organization"),
     ]
 
+    DNS_INPUTS = DNS_INPUTS
+    DNF_INPUTS = DNF_INPUTS
+
     def __init__(
         self, persons: List[Person], results_map: dict, parent: Optional[Any] = None
     ):
@@ -443,7 +425,7 @@ class SwimmingResultsModel(QAbstractTableModel):
                     item["input_status"] = None
                 else:
                     # Check for status inputs (dns/dnf variants)
-                    status_parsed = parse_status_input(str_value)
+                    status_parsed = self.parse_status_input(str_value)
                     if status_parsed:
                         # status_parsed = (ResultStatus, comment, finish_otime)
                         item["input_int"] = 0
@@ -519,7 +501,7 @@ class SwimmingResultsModel(QAbstractTableModel):
             status_preview = item.get("input_status")
             if status_preview:
                 # map preview to actual status (DNS/DNF)
-                parsed = parse_status_input(status_preview)
+                parsed = self.parse_status_input(status_preview)
                 if parsed:
                     _, comment, finish_otime = parsed
                     otime = finish_otime
@@ -537,7 +519,7 @@ class SwimmingResultsModel(QAbstractTableModel):
                 result.finish_time = otime
                 # set the status/comment based on input
                 if status_preview:
-                    parsed = parse_status_input(status_preview)
+                    parsed = self.parse_status_input(status_preview)
                     if parsed:
                         status_enum, comment, _ = parsed
                         result.status = status_enum
@@ -555,7 +537,7 @@ class SwimmingResultsModel(QAbstractTableModel):
                 result.person = person
                 result.finish_time = otime
                 if status_preview:
-                    parsed = parse_status_input(status_preview)
+                    parsed = self.parse_status_input(status_preview)
                     if parsed:
                         status_enum, comment, _ = parsed
                         result.status = status_enum
@@ -582,23 +564,57 @@ class SwimmingResultsModel(QAbstractTableModel):
                 if main_window is not None:
                     main_window.refresh()
 
+    def parse_status_input(self, input: str):
+        """Parse a status string input and return a tuple (status_enum, comment, finish_otime) or None.
+
+        Accepts many variants, returns the canonical ResultStatus and string comment (DNS/DNF)
+        and finish time 23:59:59.00.
+        """
+        if not input:
+            return None
+        input = str(input).strip().lower()
+        if input in self.DNS_INPUTS:
+            # DID_NOT_START
+            finish = OTime(hour=23, minute=59, sec=59, msec=0)
+            return (ResultStatus.DID_NOT_START, "DNS", finish)
+        if input in self.DNF_INPUTS:
+            # DID_NOT_FINISH
+            finish = OTime(hour=23, minute=59, sec=59, msec=0)
+            return (ResultStatus.DID_NOT_FINISH, "DNF", finish)
+        return None
+
 
 class SwimmingResultsDialog(QDialog):
+    # nav state placeholders
+    heat_first: Optional[int] = None
+    heat_prev: Optional[int] = None
+    heat_next: Optional[int] = None
+    heat_last: Optional[int] = None
+    heat_current: Optional[int] = None
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle(translate("Swimming Results"))
         self.setModal(True)
-
-        # nav state placeholders
-        self._first_heat = None
-        self._prev_heat = None
-        self._next_heat = None
-        self._last_heat = None
-
         self.race_obj = race()
-        self.current_heat: Optional[int] = None
 
-        # Navigation header (Текущий заплыв on left; controls centered)
+        self._init_layout()
+
+        self._init_connections()
+
+        self.load_initial_heat()
+
+    def _init_layout(self):
+        self._init_header()
+        self._init_model_view()
+        self._init_bottom_buttons()
+
+        self.layout_ = QVBoxLayout(self)
+        self.layout_.addWidget(self.header)
+        self.layout_.addWidget(self.view)
+        self.layout_.addWidget(self.button_box)
+
+    def _init_header(self):
         self.header = QWidget(self)
         header_layout = QHBoxLayout(self.header)
 
@@ -613,7 +629,7 @@ class SwimmingResultsDialog(QDialog):
         self.button_prev = QPushButton(self)
         self.heat_input = QLineEdit(self)
         self.heat_input.setValidator(QIntValidator(0, 999, self.heat_input))
-        self.heat_input.setFixedWidth(80)
+        self.heat_input.setFixedWidth(36)
         self.button_next = QPushButton(self)
         self.button_last = QPushButton(self)
         for b in (
@@ -622,7 +638,7 @@ class SwimmingResultsDialog(QDialog):
             self.button_next,
             self.button_last,
         ):
-            b.setFixedWidth(64)
+            b.setFixedWidth(48)
         center_layout.addWidget(self.button_first)
         center_layout.addWidget(self.button_prev)
         center_layout.addWidget(self.heat_input)
@@ -633,62 +649,50 @@ class SwimmingResultsDialog(QDialog):
         header_layout.addWidget(center)
         header_layout.addStretch()
 
-        # initial full-model load; model will be replaced by load_heat
-        persons = sorted(self.race_obj.persons, key=lambda p: p.bib)
-        results_map = {r.person.id: r for r in self.race_obj.results if r.person}
-
-        self.model = SwimmingResultsModel(persons, results_map, parent=self)
-
-        self.view = QTableView(self)
-        self.view.sizeHint = lambda: QSize(600, 500)
-        self.view.setModel(self.model)
-        # Set delegates for input/result columns
-        self.view.setItemDelegateForColumn(
-            self.model.COL_INPUT, InputDelegate(self.view)
-        )
-        self.view.setItemDelegateForColumn(self.model.COL_BIB, BibDelegate(self.view))
-        # Connect double-click for editing person or result
-        self.view.doubleClicked.connect(self._on_double_click)
-        self.view.resizeColumnsToContents()
-
+    def _init_bottom_buttons(self):
         button_box = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok
             | QDialogButtonBox.StandardButton.Apply
             | QDialogButtonBox.StandardButton.Cancel
+            | QDialogButtonBox.StandardButton.Reset
         )
         self.button_ok = button_box.button(QDialogButtonBox.StandardButton.Ok)
-        self.button_ok.setText(translate("OK"))
         self.button_apply = button_box.button(QDialogButtonBox.StandardButton.Apply)
-        self.button_apply.setText(translate("Apply"))
         self.button_cancel = button_box.button(QDialogButtonBox.StandardButton.Cancel)
+        self.button_reset = button_box.button(QDialogButtonBox.StandardButton.Reset)
+
+        self.button_ok.setText(translate("OK"))
+        self.button_apply.setText(translate("Apply"))
         self.button_cancel.setText(translate("Cancel"))
+        self.button_reset.setText(translate("Сбросить"))
 
-        button_box.accepted.connect(self.on_ok)
-        self.button_apply.clicked.connect(self.on_apply)
-        button_box.rejected.connect(self.on_cancel)
+        self.button_box = button_box
 
-        # Reset button in the bottom area
-        self.button_reset = QPushButton(translate("Сбросить"), self)
-        button_box.addButton(self.button_reset, QDialogButtonBox.ButtonRole.ActionRole)
-        self.button_reset.clicked.connect(self.on_reset)
+    def _init_model_view(self):
+        self.model = SwimmingResultsModel([], {}, parent=self)
 
-        layout = QVBoxLayout(self)
-        layout.addWidget(self.header)
-        layout.addWidget(self.view)
-        layout.addWidget(button_box)
+        self.view = QTableView(self)
+        self.view.sizeHint = lambda: QSize(600, 500)
 
-        # wire navigation signals
-        self.button_first.clicked.connect(
-            lambda: self.try_change_heat(self._first_heat)
+        self.view.setItemDelegateForColumn(
+            self.model.COL_INPUT, InputDelegate(self.view)
         )
-        self.button_prev.clicked.connect(lambda: self.try_change_heat(self._prev_heat))
-        self.button_next.clicked.connect(lambda: self.try_change_heat(self._next_heat))
-        self.button_last.clicked.connect(lambda: self.try_change_heat(self._last_heat))
+        self.view.setItemDelegateForColumn(self.model.COL_BIB, BibDelegate(self.view))
+
+    def _init_connections(self):
+        # wire navigation signals
+        self.button_first.clicked.connect(lambda: self.try_change_heat(self.heat_first))
+        self.button_prev.clicked.connect(lambda: self.try_change_heat(self.heat_prev))
+        self.button_next.clicked.connect(lambda: self.try_change_heat(self.heat_next))
+        self.button_last.clicked.connect(lambda: self.try_change_heat(self.heat_last))
         self.button_current.clicked.connect(self.on_current_heat_requested)
         self.heat_input.editingFinished.connect(self.on_heat_input_finished)
 
-        # connect model changes
-        self.model.dataChanged.connect(self._update_bottom_buttons)
+        # wire bottom buttons
+        self.button_box.accepted.connect(self.on_ok)
+        self.button_box.rejected.connect(self.on_cancel)
+        self.button_apply.clicked.connect(self.on_apply)
+        self.button_reset.clicked.connect(self.on_reset)
 
         # Shortcuts
         self.button_prev.setToolTip("Alt+Left")
@@ -697,24 +701,19 @@ class SwimmingResultsDialog(QDialog):
         self.button_last.setToolTip("Alt+End")
         self.button_apply.setToolTip("Ctrl+S")
 
-        QShortcut(QKeySequence("Alt+Left"), self).activated.connect(
-            lambda: self.try_change_heat(self._prev_heat)
-        )
-        QShortcut(QKeySequence("Alt+Right"), self).activated.connect(
-            lambda: self.try_change_heat(self._next_heat)
-        )
-        QShortcut(QKeySequence("Alt+Home"), self).activated.connect(
-            lambda: self.try_change_heat(self._first_heat)
-        )
-        QShortcut(QKeySequence("Alt+End"), self).activated.connect(
-            lambda: self.try_change_heat(self._last_heat)
-        )
-        QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(self.on_apply)
+        shortcut = QShortcut(QKeySequence("Alt+Left"), self)
+        shortcut.activated.connect(lambda: self.try_change_heat(self.heat_prev))
+        shortcut = QShortcut(QKeySequence("Alt+Right"), self)
+        shortcut.activated.connect(lambda: self.try_change_heat(self.heat_next))
+        shortcut = QShortcut(QKeySequence("Alt+Home"), self)
+        shortcut.activated.connect(lambda: self.try_change_heat(self.heat_first))
+        shortcut = QShortcut(QKeySequence("Alt+End"), self)
+        shortcut.activated.connect(lambda: self.try_change_heat(self.heat_last))
+        shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
+        shortcut.activated.connect(self.on_apply)
 
+        self.view.doubleClicked.connect(self._on_double_click)
         self.installEventFilter(self)
-
-        # pick initial heat: first unfinished, otherwise first available
-        self.load_initial_heat()
 
     def eventFilter(self, arg__1: QObject, arg__2: QEvent) -> bool:
         obj, event = arg__1, arg__2
@@ -773,10 +772,84 @@ class SwimmingResultsDialog(QDialog):
         else:
             self.reject()
 
+    def on_reset(self):
+        # reload current heat from race_obj
+        self.load_heat(self.heat_current)
+
+    def closeEvent(self, arg__1):
+        if self.has_unsaved_changes():
+            self.on_cancel()
+            event = arg__1
+            event.ignore()
+
+    def _on_double_click(self, index: Union[QModelIndex, QPersistentModelIndex]):
+        # Called when user double-clicks a cell in the view.
+        if not index or not index.isValid():
+            return
+        row = index.row()
+        col = index.column()
+        item = self.model.get_row(row)
+        # Double-click on full name or organization -> edit person
+        if col in (self.model.COL_FULLNAME, self.model.COL_ORG):
+            person = item.get("person")
+            if person:
+                PersonEditDialog(person).exec_()
+                self.load_heat(self.heat_current)
+        # Double-click on result -> edit result if present
+        elif col == self.model.COL_RESULT:
+            result = item.get("result")
+            if result:
+                ResultEditDialog(result).exec_()
+                self.load_heat(self.heat_current)
+
+    def _update_bottom_buttons(self):
+        has_unsaved_changes = self.has_unsaved_changes()
+        self.button_apply.setEnabled(has_unsaved_changes)
+        self.button_reset.setEnabled(has_unsaved_changes)
+
+    def _update_nav_buttons(self):
+        heats = self.get_available_heats()
+        if not heats:
+            self.heat_first = None
+            self.heat_prev = None
+            self.heat_next = None
+            self.heat_last = None
+        else:
+            if self.heat_current is None:
+                idx = 0
+            else:
+                try:
+                    idx = heats.index(self.heat_current)
+                except ValueError:
+                    idx = 0
+            self.heat_first = heats[0] if idx > 0 else None
+            self.heat_prev = heats[idx - 1] if idx > 0 else None
+
+            self.heat_last = heats[-1] if idx < len(heats) - 1 else None
+            self.heat_next = heats[idx + 1] if idx < len(heats) - 1 else None
+
+        self._set_btn_text(self.button_first, "<<", self.heat_first)
+        self._set_btn_text(self.button_prev, "<", self.heat_prev)
+        self._set_btn_text(self.button_next, ">", self.heat_next)
+        self._set_btn_text(self.button_last, ">>", self.heat_last)
+
+        if self.heat_current is None:
+            self.heat_input.setText("")
+        else:
+            self.heat_input.setText(str(self.heat_current))
+
+    def _set_btn_text(self, btn, prefix, heat):
+        if heat is None:
+            btn.setText("")
+            btn.setEnabled(False)
+        else:
+            btn.setText(f"{prefix} {heat}")
+            btn.setEnabled(True)
+
     def load_initial_heat(self):
         heats = self.get_available_heats()
         if not heats:
-            self.current_heat = None
+            self.heat_current = None
             self._update_nav_buttons()
             return
         first_unfinished = self.find_first_unfinished_heat()
@@ -794,50 +867,6 @@ class SwimmingResultsDialog(QDialog):
                 return h
         return None
 
-    def _update_bottom_buttons(self):
-        has_unsaved_changes = self.has_unsaved_changes()
-        self.button_apply.setEnabled(has_unsaved_changes)
-        self.button_reset.setEnabled(has_unsaved_changes)
-
-    def _update_nav_buttons(self):
-        heats = self.get_available_heats()
-        if not heats:
-            self._first_heat = None
-            self._prev_heat = None
-            self._next_heat = None
-            self._last_heat = None
-        else:
-            if self.current_heat is None:
-                idx = 0
-            else:
-                try:
-                    idx = heats.index(self.current_heat)
-                except ValueError:
-                    idx = 0
-            self._first_heat = heats[0] if idx > 0 else None
-            self._prev_heat = heats[idx - 1] if idx > 0 else None
-
-            self._last_heat = heats[-1] if idx < len(heats) - 1 else None
-            self._next_heat = heats[idx + 1] if idx < len(heats) - 1 else None
-
-        self._set_btn_text(self.button_first, "<<", self._first_heat)
-        self._set_btn_text(self.button_prev, "<", self._prev_heat)
-        self._set_btn_text(self.button_next, ">", self._next_heat)
-        self._set_btn_text(self.button_last, ">>", self._last_heat)
-
-        if self.current_heat is None:
-            self.heat_input.setText("")
-        else:
-            self.heat_input.setText(str(self.current_heat))
-
-    def _set_btn_text(self, btn, prefix, heat):
-        if heat is None:
-            btn.setText("")
-            btn.setEnabled(False)
-        else:
-            btn.setText(f"{prefix} {heat}")
-            btn.setEnabled(True)
-
     def on_heat_input_finished(self):
         txt = self.heat_input.text().strip()
         if txt == "":
@@ -848,26 +877,6 @@ class SwimmingResultsDialog(QDialog):
             return
         self.try_change_heat(new_heat)
 
-    def _on_double_click(self, index: Union[QModelIndex, QPersistentModelIndex]):
-        # Called when user double-clicks a cell in the view.
-        if not index or not index.isValid():
-            return
-        row = index.row()
-        col = index.column()
-        item = self.model.get_row(row)
-        # Double-click on full name or organization -> edit person
-        if col in (self.model.COL_FULLNAME, self.model.COL_ORG):
-            person = item.get("person")
-            if person:
-                PersonEditDialog(person).exec_()
-                self.load_heat(self.current_heat)
-        # Double-click on result -> edit result if present
-        elif col == self.model.COL_RESULT:
-            result = item.get("result")
-            if result:
-                ResultEditDialog(result).exec_()
-                self.load_heat(self.current_heat)
-
     def on_current_heat_requested(self):
         h = self.find_first_unfinished_heat()
         if h is None:
@@ -877,7 +886,7 @@ class SwimmingResultsDialog(QDialog):
             self.try_change_heat(h)
 
     def try_change_heat(self, new_heat: Optional[int], force: bool = False):
-        if new_heat == self.current_heat and not force:
+        if new_heat == self.heat_current and not force:
             return
         if not force and self.has_unsaved_changes():
             parent = QApplication.activeWindow()
@@ -895,8 +904,8 @@ class SwimmingResultsDialog(QDialog):
                     logging.exception("Error applying changes before heat change")
                     return
             else:
-                if self.current_heat is not None:
-                    self.heat_input.setText(str(self.current_heat))
+                if self.heat_current is not None:
+                    self.heat_input.setText(str(self.heat_current))
                 return
         self.load_heat(new_heat)
 
@@ -918,14 +927,9 @@ class SwimmingResultsDialog(QDialog):
         self.model = SwimmingResultsModel(persons, results_map, parent=self)
         self.model.dataChanged.connect(self._update_bottom_buttons)
         self.view.setModel(self.model)
-
-        self.view.setItemDelegateForColumn(
-            self.model.COL_INPUT, InputDelegate(self.view)
-        )
-
         self.view.resizeColumnsToContents()
 
-        self.current_heat = start_group
+        self.heat_current = start_group
         if not persons:
             self.heat_input.setStyleSheet("background: #fff0f0")
         else:
@@ -942,13 +946,3 @@ class SwimmingResultsDialog(QDialog):
         except Exception:
             pass
         return False
-
-    def on_reset(self):
-        # reload current heat from race_obj
-        self.load_heat(self.current_heat)
-
-    def closeEvent(self, arg__1):
-        if self.has_unsaved_changes():
-            self.on_cancel()
-            event = arg__1
-            event.ignore()
