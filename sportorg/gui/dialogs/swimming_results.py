@@ -751,12 +751,16 @@ class SwimmingResultsDialog(QDialog):
             msg.setWindowTitle(translate("Unsaved changes"))
             msg.setText(translate("Do you want to save changes before closing?"))
             msg.setStandardButtons(
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                QMessageBox.StandardButton.Yes
+                | QMessageBox.StandardButton.No
+                | QMessageBox.StandardButton.Cancel
             )
             res = msg.exec()
             if res == QMessageBox.StandardButton.Yes:
                 self.on_apply()
-        self.accept()
+                self.accept()
+            elif res == QMessageBox.StandardButton.No:
+                self.accept()
 
     def on_cancel(self):
         if self.has_unsaved_changes():
@@ -766,6 +770,8 @@ class SwimmingResultsDialog(QDialog):
             msg.setText(translate("You need to apply changes before closing"))
             msg.setStandardButtons(QMessageBox.StandardButton.Ok)
             msg.exec()
+        else:
+            self.reject()
 
     def load_initial_heat(self):
         heats = self.get_available_heats()
@@ -942,6 +948,7 @@ class SwimmingResultsDialog(QDialog):
         self.load_heat(self.current_heat)
 
     def closeEvent(self, arg__1):
-        self.on_cancel()
-        event = arg__1
-        event.ignore()
+        if self.has_unsaved_changes():
+            self.on_cancel()
+            event = arg__1
+            event.ignore()
