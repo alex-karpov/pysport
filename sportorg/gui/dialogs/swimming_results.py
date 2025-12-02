@@ -118,11 +118,12 @@ class PoolTimeConverter:
 
     @staticmethod
     def input_to_str(input_value: int) -> str:
-        if input_value:
-            otime = PoolTimeConverter.input_to_otime(input_value)
-            time_accuracy = race().get_setting("time_accuracy", 0)
-            return otime.to_str(time_accuracy)[3:]  # type: ignore
-        return "00:00.00"
+        otime = PoolTimeConverter.input_to_otime(input_value)
+        time_accuracy = race().get_setting("time_accuracy", 0)
+        time_str = otime.to_str(time_accuracy)  # type: ignore
+        if time_str.startswith("00:"):
+            time_str = time_str[3:]  # strip leading hours if zero
+        return time_str
 
 
 class InputDelegate(QStyledItemDelegate):
