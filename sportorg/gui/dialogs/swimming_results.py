@@ -1,17 +1,27 @@
 import logging
+from ast import mod
 from collections import defaultdict
 from typing import Any, List, Optional, Union
 
 from PySide6.QtCore import (
     QAbstractTableModel,
+    QEvent,
     QModelIndex,
+    QObject,
     QPersistentModelIndex,
     QRegularExpression,
     QSize,
     Qt,
 )
-from PySide6.QtGui import QIntValidator, QRegularExpressionValidator
+from PySide6.QtGui import (
+    QIntValidator,
+    QKeyEvent,
+    QKeySequence,
+    QRegularExpressionValidator,
+    QShortcut,
+)
 from PySide6.QtWidgets import (
+    QAbstractItemDelegate,
     QApplication,
     QDialog,
     QDialogButtonBox,
@@ -26,6 +36,8 @@ from PySide6.QtWidgets import (
 )
 
 from sportorg.common.otime import OTime
+from sportorg.gui.dialogs.person_edit import PersonEditDialog
+from sportorg.gui.dialogs.result_edit import ResultEditDialog
 from sportorg.gui.global_access import GlobalAccess
 from sportorg.language import translate
 from sportorg.models.memory import (
@@ -44,13 +56,13 @@ from sportorg.modules.teamwork.teamwork import Teamwork
 # * [ ] Проверить, проработать фокус ввода
 #   * [ ] Что всегда верхняя левая ячейка
 #   * [ ] Как действует табуляция?
-# * [ ] Горячие клавиши:
-#   * [ ] Alt+Left, Alt+Right — предыдущий, следующий заплыв
-#   * [ ] Alt+Home, Alt+End — первый, последний заплыв
-#   * [ ] Enter — следующая ячейка; завершить редактирование и следующая ячейка (как в Excel)
-#   * [ ] Ctrl+S — применить изменения
-#   * [ ] DoubleClick по имени — редактировать спортсмена
-#   * [ ] DoubleClick по результату — редактировать результат?
+# * [+] Горячие клавиши:
+#   * [+] Alt+Left, Alt+Right — предыдущий, следующий заплыв
+#   * [+] Alt+Home, Alt+End — первый, последний заплыв
+#   * [+] Enter — следующая ячейка; завершить редактирование и следующая ячейка (как в Excel)
+#   * [+] Ctrl+S — применить изменения
+#   * [+] DoubleClick по имени — редактировать спортсмена
+#   * [+] DoubleClick по результату — редактировать результат?
 # * [ ] Перевод
 #   * [ ] Input
 #   * [ ] Organization = Представитель
@@ -134,49 +146,6 @@ class PoolTimeConverter:
         return "00:00.00"
 
 
-class InputIntDelegate(QStyledItemDelegate):
-    def createEditor(self, parent, option, index):
-        editor = QLineEdit(parent)
-        validator = QIntValidator(0, 9999999, editor)
-        editor.setValidator(validator)
-        return editor
-
-    def setEditorData(self, editor, index):
-        # Populate editor with current display value and select all text
-        if not isinstance(editor, QLineEdit):
-            return
-        try:
-            value = index.model().data(index, Qt.ItemDataRole.DisplayRole)
-            if value is not None:
-                editor.setText(str(value))
-                editor.selectAll()
-        except Exception:
-            # Be defensive: don't break editing if something unexpected happens
-            pass
-
-
-class PoolTimeDelegate(QStyledItemDelegate):
-    def createEditor(self, parent, option, index):
-        editor = QLineEdit(parent)
-        # Accept mm:ss.hh or m:ss.hh, up to 3 digits for minutes, 2 for seconds, 2 for hundreds
-        regex = QRegularExpression(r"^\d{1,3}:[0-5]\d(\.\d{1,2})?$")
-        validator = QRegularExpressionValidator(regex, editor)
-        editor.setValidator(validator)
-        return editor
-
-    def setEditorData(self, editor, index):
-        # Populate editor with current display value and select all text
-        if not isinstance(editor, QLineEdit):
-            return
-        try:
-            value = index.model().data(index, Qt.ItemDataRole.DisplayRole)
-            if value is not None:
-                editor.setText(str(value))
-                editor.selectAll()
-        except Exception:
-            pass
-
-
 class InputDelegate(QStyledItemDelegate):
     """Delegate for Input column: accepts integers, mm:ss.hh format, or status strings like DNS/DNF."""
 
@@ -186,6 +155,7 @@ class InputDelegate(QStyledItemDelegate):
         regex = QRegularExpression(r"^[0-9]+$|^[A-Za-zА-Яа-я/\\]+$")
         validator = QRegularExpressionValidator(regex, editor)
         editor.setValidator(validator)
+        editor.installEventFilter(self)
         return editor
 
     def setEditorData(self, editor, index):
@@ -198,6 +168,25 @@ class InputDelegate(QStyledItemDelegate):
                 editor.selectAll()
         except Exception:
             pass
+
+    def eventFilter(self, object: QObject, event: QEvent) -> bool:
+        if (
+            isinstance(event, QKeyEvent)
+            and event.type() == QEvent.Type.KeyPress
+            and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)
+        ):
+            widget = object
+            while widget is not None:
+                widget = widget.parent()
+                if isinstance(widget, QTableView):
+                    break
+            view = widget
+            if isinstance(object, QLineEdit) and isinstance(view, QTableView):
+                view.commitData(object)
+                view.closeEditor(object, QAbstractItemDelegate.EndEditHint.NoHint)
+
+            return False
+        return super().eventFilter(object, event)
 
 
 class BibDelegate(QStyledItemDelegate):
@@ -205,6 +194,7 @@ class BibDelegate(QStyledItemDelegate):
         editor = QLineEdit(parent)
         validator = QIntValidator(0, Limit.BIB, editor)
         editor.setValidator(validator)
+        # editor.installEventFilter(self)
         return editor
 
     def setEditorData(self, editor, index):
@@ -217,6 +207,25 @@ class BibDelegate(QStyledItemDelegate):
                 editor.selectAll()
         except Exception:
             pass
+
+    def eventFilter(self, object: QObject, event: QEvent) -> bool:
+        if (
+            isinstance(event, QKeyEvent)
+            and event.type() == QEvent.Type.KeyPress
+            and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter)
+        ):
+            widget = object
+            while widget is not None:
+                widget = widget.parent()
+                if isinstance(widget, QTableView):
+                    break
+            view = widget
+            if isinstance(object, QLineEdit) and isinstance(view, QTableView):
+                view.commitData(object)
+                view.closeEditor(object, QAbstractItemDelegate.EndEditHint.NoHint)
+
+            return False
+        return super().eventFilter(object, event)
 
 
 def parse_pool_time_str(s: str) -> OTime:
@@ -580,6 +589,12 @@ class SwimmingResultsDialog(QDialog):
         self.setWindowTitle(translate("Swimming Results"))
         self.setModal(True)
 
+        # nav state placeholders
+        self._first_heat = None
+        self._prev_heat = None
+        self._next_heat = None
+        self._last_heat = None
+
         self.race_obj = race()
         self.current_heat: Optional[int] = None
 
@@ -631,10 +646,9 @@ class SwimmingResultsDialog(QDialog):
         self.view.setItemDelegateForColumn(
             self.model.COL_INPUT, InputDelegate(self.view)
         )
-        # self.view.setItemDelegateForColumn(
-        #     self.model.COL_RESULT, PoolTimeDelegate(self.view)
-        # )
         self.view.setItemDelegateForColumn(self.model.COL_BIB, BibDelegate(self.view))
+        # Connect double-click for editing person or result
+        self.view.doubleClicked.connect(self._on_double_click)
         self.view.resizeColumnsToContents()
 
         button_box = QDialogButtonBox(
@@ -676,14 +690,49 @@ class SwimmingResultsDialog(QDialog):
         # connect model changes
         self.model.dataChanged.connect(self._update_bottom_buttons)
 
-        # nav state placeholders
-        self._first_heat = None
-        self._prev_heat = None
-        self._next_heat = None
-        self._last_heat = None
+        # Shortcuts
+        self.button_prev.setToolTip("Alt+Left")
+        self.button_next.setToolTip("Alt+Right")
+        self.button_first.setToolTip("Alt+Home")
+        self.button_last.setToolTip("Alt+End")
+        self.button_apply.setToolTip("Ctrl+S")
+
+        QShortcut(QKeySequence("Alt+Left"), self).activated.connect(
+            lambda: self.try_change_heat(self._prev_heat)
+        )
+        QShortcut(QKeySequence("Alt+Right"), self).activated.connect(
+            lambda: self.try_change_heat(self._next_heat)
+        )
+        QShortcut(QKeySequence("Alt+Home"), self).activated.connect(
+            lambda: self.try_change_heat(self._first_heat)
+        )
+        QShortcut(QKeySequence("Alt+End"), self).activated.connect(
+            lambda: self.try_change_heat(self._last_heat)
+        )
+        QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(self.on_apply)
+
+        self.installEventFilter(self)
 
         # pick initial heat: first unfinished, otherwise first available
         self.load_initial_heat()
+
+    def eventFilter(self, arg__1: QObject, arg__2: QEvent) -> bool:
+        obj, event = arg__1, arg__2
+        if isinstance(event, QKeyEvent) and event.type() == QEvent.Type.KeyPress:
+            if event.key() in (
+                Qt.Key.Key_Return,
+                Qt.Key.Key_Enter,
+            ) and event.modifiers() in (
+                Qt.KeyboardModifier.NoModifier,
+                Qt.KeyboardModifier.KeypadModifier,
+            ):
+                col = self.view.currentIndex().column()
+                row = self.view.currentIndex().row()
+                if row < self.model.rowCount() - 1:
+                    self.view.setCurrentIndex(self.model.index(row + 1, col))
+                return True
+
+        return super().eventFilter(obj, event)
 
     def on_apply(self):
         try:
@@ -807,6 +856,26 @@ class SwimmingResultsDialog(QDialog):
             return
         self.try_change_heat(new_heat)
 
+    def _on_double_click(self, index: Union[QModelIndex, QPersistentModelIndex]):
+        # Called when user double-clicks a cell in the view.
+        if not index or not index.isValid():
+            return
+        row = index.row()
+        col = index.column()
+        item = self.model.get_row(row)
+        # Double-click on full name or organization -> edit person
+        if col in (self.model.COL_FULLNAME, self.model.COL_ORG):
+            person = item.get("person")
+            if person:
+                PersonEditDialog(person).exec_()
+                self.load_heat(self.current_heat)
+        # Double-click on result -> edit result if present
+        elif col == self.model.COL_RESULT:
+            result = item.get("result")
+            if result:
+                ResultEditDialog(result).exec_()
+                self.load_heat(self.current_heat)
+
     def on_current_heat_requested(self):
         h = self.find_first_unfinished_heat()
         if h is None:
@@ -861,9 +930,7 @@ class SwimmingResultsDialog(QDialog):
         self.view.setItemDelegateForColumn(
             self.model.COL_INPUT, InputDelegate(self.view)
         )
-        self.view.setItemDelegateForColumn(
-            self.model.COL_RESULT, PoolTimeDelegate(self.view)
-        )
+
         self.view.resizeColumnsToContents()
 
         self.current_heat = start_group
