@@ -2,6 +2,7 @@ import pytest
 
 from sportorg.common.otime import OTime
 from sportorg.gui.dialogs.swimming_results import PoolTimeConverter
+from sportorg.models.memory import race
 
 
 @pytest.mark.parametrize(
@@ -45,12 +46,13 @@ def test_input_to_otime(input, expected_otime):
         (0, "00:00.00"),
         (5678, "00:56.78"),
         (12345, "01:23.45"),
-        (1020345, "62:03.45"),
+        (1020345, "01:02:03.45"),
         (595999, "59:59.99"),
-        (23595999, "1439:59.99"),
-        (12345678, "754:56.78"),
+        (23595999, "23:59:59.99"),
+        (12345678, "12:34:56.78"),
     ],
 )
 def test_input_to_str(input, expected_str):
+    race().set_setting("time_accuracy", 2)
     result = PoolTimeConverter.input_to_str(input)
     assert result == expected_str
