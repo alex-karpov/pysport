@@ -14,6 +14,7 @@ from sportorg.models.memory import (
     Result,
     ResultManual,
     ResultStatus,
+    race,
 )
 
 
@@ -25,9 +26,9 @@ def test_parse_pool_time_str_basic():
     assert o.msec == 450
 
 
-@pytest.mark.skip(reason="Not working")
 def test_model_apply_creates_result():
     r = Race()
+    race().set_setting("time_accuracy", 2)
     org = Organization()
     org.name = "TeamX"
     r.organizations.append(org)
@@ -44,12 +45,12 @@ def test_model_apply_creates_result():
     model = SwimmingResultsModel([p], {}, parent=None)
 
     row_index = next(i for i, r in enumerate(model._rows) if r["person"].id == p.id)
-    idx = model.index(row_index, 0)
-    result = model.setData(idx, "02:03.45", Qt.ItemDataRole.EditRole)
+    idx = model.index(row_index, model.COL_INPUT)
+    result = model.setData(idx, "20345", Qt.ItemDataRole.EditRole)
     assert result is True
     # display should reflect formatted value
-    result = model.data(idx, Qt.ItemDataRole.DisplayRole) == "02:03.45"
-    assert result is True
+    idx = model.index(row_index, model.COL_RESULT)
+    assert model.data(idx, Qt.ItemDataRole.DisplayRole) == "02:03.45"
 
     model.apply_to_race(r)
 
@@ -66,9 +67,9 @@ def test_empty_input_sets_zero_time():
 
     model = SwimmingResultsModel([p], {}, parent=None)
     idx = model.index(0, 0)
-    assert model.setData(idx, "   ", Qt.EditRole)
+    assert model.setData(idx, "   ", Qt.ItemDataRole.EditRole)
     # display empty for zero
-    assert model.data(idx, Qt.DisplayRole) == ""
+    assert model.data(idx, Qt.ItemDataRole.DisplayRole) == ""
 
     model.apply_to_race(r)
     res = r.find_person_result(p)
@@ -78,6 +79,7 @@ def test_empty_input_sets_zero_time():
 
 def test_load_heat_ok_shows_time_and_input_int():
     r = Race()
+    race().set_setting("time_accuracy", 2)
     org = Organization()
     org.name = "TeamX"
     r.organizations.append(org)
@@ -101,10 +103,10 @@ def test_load_heat_ok_shows_time_and_input_int():
     row_index = next(i for i, r in enumerate(model._rows) if r["person"].id == p.id)
     idx_input = model.index(row_index, model.COL_INPUT)
     idx_result = model.index(row_index, model.COL_RESULT)
-    assert model.data(idx_input, Qt.DisplayRole) == str(
+    assert model.data(idx_input, Qt.ItemDataRole.DisplayRole) == str(
         PoolTimeConverter.result_to_input(res)
     )
-    assert model.data(idx_result, Qt.DisplayRole) == "02:03.45"
+    assert model.data(idx_result, Qt.ItemDataRole.DisplayRole) == "02:03.45"
 
 
 def test_load_heat_non_ok_shows_status():
@@ -120,7 +122,6 @@ def test_load_heat_non_ok_shows_status():
     p.organization = org
     r.add_person(p)
 
-    res = Result()
     res = ResultManual()
     res.person = p
     res.bib = p.bib
@@ -133,8 +134,8 @@ def test_load_heat_non_ok_shows_status():
     row_index = next(i for i, r in enumerate(model._rows) if r["person"].id == p.id)
     idx_input = model.index(row_index, model.COL_INPUT)
     idx_result = model.index(row_index, model.COL_RESULT)
-    assert model.data(idx_input, Qt.DisplayRole) == "DNS"
-    assert model.data(idx_result, Qt.DisplayRole) == "DNS"
+    assert model.data(idx_input, Qt.ItemDataRole.DisplayRole) == "DNS"
+    assert model.data(idx_result, Qt.ItemDataRole.DisplayRole) == "DNS"
 
 
 def test_input_dns_sets_result_status():
@@ -153,7 +154,7 @@ def test_input_dns_sets_result_status():
     model = SwimmingResultsModel([p], {}, parent=None)
     row_index = next(i for i, r in enumerate(model._rows) if r["person"].id == p.id)
     idx_input = model.index(row_index, model.COL_INPUT)
-    assert model.setData(idx_input, "dns", Qt.EditRole)
+    assert model.setData(idx_input, "dns", Qt.ItemDataRole.EditRole)
     model.apply_to_race(r)
     res = r.find_person_result(p)
     assert res is not None
@@ -173,7 +174,7 @@ def test_input_time_sets_ok_status_and_finish():
     model = SwimmingResultsModel([p], {}, parent=None)
     row_index = next(i for i, r in enumerate(model._rows) if r["person"].id == p.id)
     idx_input = model.index(row_index, model.COL_INPUT)
-    assert model.setData(idx_input, "01:20.50", Qt.EditRole)
+    assert model.setData(idx_input, "01:20.50", Qt.ItemDataRole.EditRole)
     model.apply_to_race(r)
     res = r.find_person_result(p)
     assert res is not None
