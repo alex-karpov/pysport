@@ -303,9 +303,9 @@ def menu_list():
                     "action": "AddSPORTidentResultAction",
                 },
                 {
-                    "title": translate("Swimming Results"),
+                    "title": translate("Swimming competition"),
                     "shortcut": "Alt+W",
-                    "action": "SwimmingResultsAction",
+                    "action": "SwimmingCompetitionAction",
                 },
             ],
         },
