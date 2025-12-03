@@ -39,6 +39,12 @@ msgstr "ОК"
 msgid "Cancel"
 msgstr "Отмена"
 
+msgid "Apply"
+msgstr "Применить"
+
+msgid "Reset"
+msgstr "Сбросить"
+
 msgid "Group"
 msgstr "Группа"
 
@@ -1824,6 +1830,33 @@ msgstr "Не все дни"
 
 msgid "in list"
 msgstr "в списке"
+
+msgid "Swimming competition"
+msgstr "Соревнования по плаванию"
+
+msgid "Input"
+msgstr "Ввод"
+
+msgid "Place of"
+msgstr "Место из"
+
+msgid "Invalid input"
+msgstr "Неверный ввод"
+
+msgid "Current"
+msgstr "Текущий"
+
+msgid "Unsaved changes"
+msgstr "Не сохранённые изменения"
+
+msgid "Do you want to save changes before closing?"
+msgstr "Сохранить изменения перед закрытием?"
+
+msgid "You need to apply changes before closing"
+msgstr "Необходимо применить изменения перед закрытием"
+
+msgid "There are unsaved changes in the heat"
+msgstr "Есть несохранённые изменения в заплыве"
 
 msgid "Gzip compression"
 msgstr "Сжатие gzip"

@@ -63,12 +63,12 @@ from sportorg.modules.teamwork.teamwork import Teamwork
 #   * [+] Ctrl+S — применить изменения
 #   * [+] DoubleClick по имени — редактировать спортсмена
 #   * [+] DoubleClick по результату — редактировать результат?
-# * [ ] Перевод
-#   * [ ] Input
-#   * [ ] Organization = Представитель
-#   * [ ] Apply
-#   * [ ] Полное наименование = Фамилия, имя
-#   * [ ] Текущий заплыв = Текущий
+# * [+] Перевод
+#   * [+] Input
+#   * [+] Organization = Представитель
+#   * [+] Apply
+#   * [+] Полное наименование = Фамилия, имя
+#   * [+] Текущий заплыв = Текущий
 # * [+] Отправка результатов онлайн
 #   * [+] В нужном порядке, чтобы первые пять были с лучшим результатом
 # * [+] Обработка DNS и DNF
@@ -230,7 +230,7 @@ class SwimmingResultsModel(QAbstractTableModel):
         translate("Full name"),
         translate("Place of"),
         translate("Group"),
-        translate("Organization"),
+        translate("Team"),
     ]
 
     DNS_INPUTS = DNS_INPUTS
@@ -573,7 +573,7 @@ class SwimmingResultsDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(translate("Swimming Results"))
+        self.setWindowTitle(translate("Swimming competition"))
         self.setModal(True)
         self.race_obj = race()
 
@@ -595,7 +595,7 @@ class SwimmingResultsDialog(QDialog):
         self.header = QWidget(self)
         header_layout = QHBoxLayout(self.header)
 
-        self.button_current = QPushButton(translate("Текущий заплыв"), self)
+        self.button_current = QPushButton(translate("Current"), self)
         header_layout.addWidget(self.button_current)
 
         # center group
@@ -641,7 +641,7 @@ class SwimmingResultsDialog(QDialog):
         self.button_ok.setText(translate("OK"))
         self.button_apply.setText(translate("Apply"))
         self.button_cancel.setText(translate("Cancel"))
-        self.button_reset.setText(translate("Сбросить"))
+        self.button_reset.setText(translate("Reset"))
 
         self.button_box = button_box
 
@@ -869,7 +869,7 @@ class SwimmingResultsDialog(QDialog):
             parent = QApplication.activeWindow()
             msg = QMessageBox(parent)
             msg.setWindowTitle(translate("Unsaved changes"))
-            msg.setText(translate("There are unsaved changes in the current heat."))
+            msg.setText(translate("There are unsaved changes in the heat"))
             msg.setStandardButtons(
                 QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Cancel
             )

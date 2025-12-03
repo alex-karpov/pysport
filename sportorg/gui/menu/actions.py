@@ -996,6 +996,6 @@ class ExtractPersonMiddleName(Action, metaclass=ActionFactory):
         self.app.refresh()
 
 
-class SwimmingResultsAction(Action, metaclass=ActionFactory):
+class SwimmingCompetitionAction(Action, metaclass=ActionFactory):
     def execute(self):
         SwimmingResultsDialog().exec_()
