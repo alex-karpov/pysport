@@ -53,9 +53,9 @@ from sportorg.modules.live.live import live_client
 from sportorg.modules.teamwork.teamwork import Teamwork
 
 # TODO:
-# * [ ] Проверить, проработать фокус ввода
-#   * [ ] Что всегда верхняя левая ячейка
-#   * [ ] Как действует табуляция?
+# * [+] Проверить, проработать фокус ввода
+#   * [+] Что всегда верхняя левая ячейка
+#   * [=] Как действует табуляция?
 # * [+] Горячие клавиши:
 #   * [+] Alt+Left, Alt+Right — предыдущий, следующий заплыв
 #   * [+] Alt+Home, Alt+End — первый, последний заплыв
@@ -82,7 +82,7 @@ from sportorg.modules.teamwork.teamwork import Teamwork
 #   * [ ] Более компактные кнопки << < > >>
 #   * [ ] Более крупный Input
 #   * [ ] Адекватные размеры окна
-# * [ ] Создание SwimmingResultsModel() в __init__() лишнее? Создаётся в load_heat() сразу после этого
+# * [+] Создание SwimmingResultsModel() в __init__() лишнее? Создаётся в load_heat() сразу после этого
 
 # Supported status inputs (case-insensitive)
 DNS_INPUTS = {"dns", "днс", "нстарт", "н/старт"}
@@ -578,9 +578,7 @@ class SwimmingResultsDialog(QDialog):
         self.race_obj = race()
 
         self._init_layout()
-
         self._init_connections()
-
         self.load_initial_heat()
 
     def _init_layout(self):
@@ -907,6 +905,9 @@ class SwimmingResultsDialog(QDialog):
         self.model.dataChanged.connect(self._update_bottom_buttons)
         self.view.setModel(self.model)
         self.view.resizeColumnsToContents()
+        self.view.setFocus()
+        if self.model.rowCount() > 0 and self.model.columnCount() > 0:
+            self.view.setCurrentIndex(self.model.index(0, 0))
 
         self.heat_current = heat
         if not persons:
