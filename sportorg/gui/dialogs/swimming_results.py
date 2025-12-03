@@ -215,7 +215,10 @@ class SwimmingResultsModel(QAbstractTableModel):
     COL_RESULT = 1
     COL_BIB = 2
     COL_FULLNAME = 3
-    COL_ORG = 4
+    COL_GROUP = 4
+    COL_ORG = 5
+
+    _column_count = 6
 
     POOL_SIZE = 6
 
@@ -224,6 +227,7 @@ class SwimmingResultsModel(QAbstractTableModel):
         translate("Result"),
         translate("Bib"),
         translate("Full name"),
+        translate("Group"),
         translate("Organization"),
     ]
 
@@ -302,7 +306,7 @@ class SwimmingResultsModel(QAbstractTableModel):
     def columnCount(
         self, parent: Union[QModelIndex, QPersistentModelIndex] = QModelIndex()
     ) -> int:
-        return 5
+        return self._column_count
 
     def headerData(self, section: int, orientation, role=Qt.ItemDataRole.DisplayRole):
         if role != Qt.ItemDataRole.DisplayRole:
@@ -353,8 +357,11 @@ class SwimmingResultsModel(QAbstractTableModel):
                 return str(person.bib)
             elif col == self.COL_FULLNAME:
                 return person.full_name
+            elif col == self.COL_GROUP:
+                return person.group.name if person.group else ""
             elif col == self.COL_ORG:
                 return person.organization.name if person.organization else ""
+
         # Align numeric columns to the right
         if role == Qt.ItemDataRole.TextAlignmentRole:
             if col in (self.COL_INPUT, self.COL_RESULT, self.COL_BIB):
@@ -747,7 +754,7 @@ class SwimmingResultsDialog(QDialog):
         col = index.column()
         item = self.model.get_row(row)
         # Double-click on full name or organization -> edit person
-        if col in (self.model.COL_FULLNAME, self.model.COL_ORG):
+        if col in (self.model.COL_FULLNAME, self.model.COL_ORG, self.model.COL_GROUP):
             person = item.get("person")
             if person:
                 PersonEditDialog(person).exec_()
