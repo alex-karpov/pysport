@@ -5,7 +5,6 @@ from sportorg.common.otime import OTime
 from sportorg.gui.dialogs.swimming_results import (
     PoolTimeConverter,
     SwimmingResultsModel,
-    parse_pool_time_str,
 )
 from sportorg.models.memory import (
     Organization,
@@ -16,14 +15,6 @@ from sportorg.models.memory import (
     ResultStatus,
     race,
 )
-
-
-def test_parse_pool_time_str_basic():
-    o = parse_pool_time_str("02:03.45")
-    assert o.hour == 0
-    assert o.minute == 2
-    assert o.sec == 3
-    assert o.msec == 450
 
 
 def test_model_apply_creates_result():
@@ -56,7 +47,8 @@ def test_model_apply_creates_result():
 
     res = r.find_person_result(p)
     assert res is not None
-    assert res.finish_time.to_msec() == parse_pool_time_str("02:03.45").to_msec()
+    assert res.finish_time.to_msec() == OTime(minute=2, sec=3, msec=450).to_msec()
+    assert res.status == ResultStatus.OK
 
 
 def test_empty_input_sets_zero_time():
@@ -95,7 +87,7 @@ def test_load_heat_ok_shows_time_and_input_int():
     res = ResultManual()
     res.person = p
     res.bib = p.bib
-    res.finish_time = parse_pool_time_str("02:03.45")
+    res.finish_time = PoolTimeConverter.input_to_otime(20345)
     res.status = ResultStatus.OK
     r.add_result(res)
 
@@ -174,9 +166,9 @@ def test_input_time_sets_ok_status_and_finish():
     model = SwimmingResultsModel([p], {}, parent=None)
     row_index = next(i for i, r in enumerate(model._rows) if r["person"].id == p.id)
     idx_input = model.index(row_index, model.COL_INPUT)
-    assert model.setData(idx_input, "01:20.50", Qt.ItemDataRole.EditRole)
+    assert model.setData(idx_input, "12050", Qt.ItemDataRole.EditRole)
     model.apply_to_race(r)
     res = r.find_person_result(p)
     assert res is not None
     assert res.status == ResultStatus.OK
-    assert res.finish_time.to_msec() == parse_pool_time_str("01:20.50").to_msec()
+    assert res.finish_time.to_msec() == OTime(minute=1, sec=20, msec=500).to_msec()

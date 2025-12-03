@@ -208,43 +208,6 @@ class BibDelegate(QStyledItemDelegate):
         return super().eventFilter(object, event)
 
 
-def parse_pool_time_str(s: str) -> OTime:
-    """Parse string like 'mm:ss.hh' into OTime.
-
-    Empty or whitespace string -> OTime() (zero time).
-    Raises ValueError on invalid format.
-    """
-    if s is None:
-        return OTime()
-    s = str(s).strip()
-    if s == "":
-        return OTime()
-
-    # Expect mm:ss.hh where mm may be one or more digits
-    try:
-        if ":" not in s:
-            raise ValueError("Invalid time format")
-        minute_part, sec_part = s.split(":", 1)
-        if "." in sec_part:
-            sec_str, hund_str = sec_part.split(".", 1)
-        else:
-            sec_str = sec_part
-            hund_str = "0"
-
-        minutes = int(minute_part)
-        seconds = int(sec_str)
-        hundreds = int(hund_str.ljust(2, "0")[:2])  # pad/truncate to 2 digits
-
-        if seconds < 0 or seconds >= 60 or hundreds < 0 or hundreds >= 100:
-            raise ValueError("Invalid time values")
-
-        hours = minutes // 60
-        minutes = minutes % 60
-        return OTime(hour=hours, minute=minutes, sec=seconds, msec=hundreds * 10)
-    except Exception as e:
-        raise ValueError(f"Cannot parse time '{s}': {e}")
-
-
 class SwimmingResultsModel(QAbstractTableModel):
     """Table model with rows = Person, columns = Result, Bib, Full name, Organization."""
 
@@ -441,13 +404,6 @@ class SwimmingResultsModel(QAbstractTableModel):
                             idx_result, idx_result, [Qt.ItemDataRole.DisplayRole]
                         )
                         return True
-                    # Try mm:ss.hh format
-                    if ":" in str_value:
-                        try:
-                            otime = parse_pool_time_str(str_value)
-                            input_int = PoolTimeConverter.otime_to_input(otime)
-                        except ValueError as ve:
-                            raise ValueError(str(ve))
                     else:
                         # fallback to numeric digits
                         input_int = int(str_value)
