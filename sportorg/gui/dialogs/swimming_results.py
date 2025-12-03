@@ -40,6 +40,7 @@ from sportorg.gui.dialogs.result_edit import ResultEditDialog
 from sportorg.gui.global_access import GlobalAccess
 from sportorg.language import translate
 from sportorg.models.memory import (
+    Group,
     Limit,
     Person,
     Result,
@@ -74,8 +75,8 @@ from sportorg.modules.teamwork.teamwork import Teamwork
 # * [ ] Окно настроек
 #   * [ ] Количество дорожек
 #   * [ ] Сохранять в настройках SportOrg
-# * [ ] Столбец: группа
-# * [ ] Столбец: место / финишировало / всего
+# * [+] Столбец: группа
+# * [+] Столбец: место / финишировало / всего
 # * [ ] Стили
 #   * [ ] Номер заплыва: крупный, по центру, более узкое поле
 #   * [ ] Более компактные кнопки << < > >>
@@ -215,10 +216,10 @@ class SwimmingResultsModel(QAbstractTableModel):
     COL_RESULT = 1
     COL_BIB = 2
     COL_FULLNAME = 3
-    COL_GROUP = 4
-    COL_ORG = 5
-
-    _column_count = 6
+    COL_PLACE = 4
+    COL_GROUP = 5
+    COL_ORG = 6
+    _column_count = 7
 
     POOL_SIZE = 6
 
@@ -227,6 +228,7 @@ class SwimmingResultsModel(QAbstractTableModel):
         translate("Result"),
         translate("Bib"),
         translate("Full name"),
+        translate("Place of"),
         translate("Group"),
         translate("Organization"),
     ]
@@ -278,6 +280,7 @@ class SwimmingResultsModel(QAbstractTableModel):
     ):
         if not person:
             person = Person()
+
         # Default input is numeric code for OTime when result is OK
         if result and not result.is_status_ok():
             input_int = 0
@@ -287,6 +290,7 @@ class SwimmingResultsModel(QAbstractTableModel):
         else:
             input_int = PoolTimeConverter.result_to_input(result)
             input_status = None
+
         record = {
             "person": person,
             "result": result,
@@ -295,8 +299,17 @@ class SwimmingResultsModel(QAbstractTableModel):
             "modified": False,
             "lane": lane,
             "bib": person.bib,
+            "place_of": self._get_place_of(person, result),
         }
         return record
+
+    def _get_place_of(self, person: Person, result: Optional[Result]) -> str:
+        if not result or not person.group:
+            return ""
+        place = result.place if result.place > 0 else "-"
+        finished = person.group.count_finished
+        total = person.group.count_person
+        return "{} / {} / {}".format(place, finished, total)
 
     def rowCount(
         self, parent: Union[QModelIndex, QPersistentModelIndex] = QModelIndex()
@@ -357,6 +370,8 @@ class SwimmingResultsModel(QAbstractTableModel):
                 return str(person.bib)
             elif col == self.COL_FULLNAME:
                 return person.full_name
+            elif col == self.COL_PLACE:
+                return item.get("place_of", "")
             elif col == self.COL_GROUP:
                 return person.group.name if person.group else ""
             elif col == self.COL_ORG:
@@ -364,7 +379,7 @@ class SwimmingResultsModel(QAbstractTableModel):
 
         # Align numeric columns to the right
         if role == Qt.ItemDataRole.TextAlignmentRole:
-            if col in (self.COL_INPUT, self.COL_RESULT, self.COL_BIB):
+            if col in (self.COL_INPUT, self.COL_RESULT, self.COL_BIB, self.COL_PLACE):
                 return int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
         return None
@@ -705,7 +720,7 @@ class SwimmingResultsDialog(QDialog):
             self.model.apply_to_race(self.race_obj)
         except Exception:
             logging.exception("Error applying swimming results")
-        self._update_bottom_buttons()
+        self.load_heat(self.heat_current)
 
     def on_ok(self):
         if self.has_unsaved_changes():
@@ -873,19 +888,19 @@ class SwimmingResultsDialog(QDialog):
                 return
         self.load_heat(new_heat)
 
-    def load_heat(self, start_group: Optional[int]):
-        if start_group is None:
+    def load_heat(self, heat: Optional[int]):
+        if heat is None:
             persons = []
             results_map = {}
         else:
             persons = sorted(
-                [p for p in self.race_obj.persons if p.start_group == start_group],
+                [p for p in self.race_obj.persons if p.start_group == heat],
                 key=lambda p: p.bib,
             )
             results_map = {
                 r.person.id: r
                 for r in self.race_obj.results
-                if r.person and r.person.start_group == start_group
+                if r.person and r.person.start_group == heat
             }
 
         self.model = SwimmingResultsModel(persons, results_map, parent=self)
@@ -893,7 +908,7 @@ class SwimmingResultsDialog(QDialog):
         self.view.setModel(self.model)
         self.view.resizeColumnsToContents()
 
-        self.heat_current = start_group
+        self.heat_current = heat
         if not persons:
             self.heat_input.setStyleSheet("background: #fff0f0")
         else:
