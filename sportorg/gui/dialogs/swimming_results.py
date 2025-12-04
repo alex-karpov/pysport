@@ -572,9 +572,8 @@ class SwimmingResultsDialog(QDialog):
     heat_current: Optional[int] = None
 
     def __init__(self, parent=None):
-        super().__init__(parent)
+        super().__init__(GlobalAccess().get_main_window())
         self.setWindowTitle(translate("Swimming competition"))
-        self.setModal(True)
         self.race_obj = race()
 
         self._init_layout()
@@ -687,7 +686,7 @@ class SwimmingResultsDialog(QDialog):
         shortcut = QShortcut(QKeySequence("Alt+End"), self)
         shortcut.activated.connect(lambda: self.try_change_heat(self.heat_last))
         shortcut = QShortcut(QKeySequence("Ctrl+S"), self)
-        shortcut.activated.connect(self.on_apply)
+        shortcut.activated.connect(self.apply_and_save)
 
         self.view.doubleClicked.connect(self._on_double_click)
         self.installEventFilter(self)
@@ -712,6 +711,10 @@ class SwimmingResultsDialog(QDialog):
                 return True
 
         return super().eventFilter(obj, event)
+
+    def apply_and_save(self):
+        self.on_apply()
+        GlobalAccess().get_main_window().save_file()
 
     def on_apply(self):
         try:
