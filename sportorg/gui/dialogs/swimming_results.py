@@ -595,19 +595,27 @@ class SwimmingResultsDialog(QDialog):
         header_layout = QHBoxLayout(self.header)
 
         self.button_current = QPushButton(translate("Current"), self)
-        header_layout.addWidget(self.button_current)
 
         # center group
         center = QWidget(self)
         center_layout = QHBoxLayout(center)
         center_layout.setContentsMargins(0, 0, 0, 0)
-        self.button_first = QPushButton(self)
-        self.button_prev = QPushButton(self)
+
         self.heat_input = QLineEdit(self)
         self.heat_input.setValidator(QIntValidator(0, 999, self.heat_input))
-        self.heat_input.setFixedWidth(36)
+
+        self.heat_input.setFixedWidth(48)
+        nav_font = self.heat_input.font()
+        nav_font.setPointSize(12)
+        nav_font.setBold(True)
+        self.heat_input.setFont(nav_font)
+        self.heat_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.button_first = QPushButton(self)
+        self.button_prev = QPushButton(self)
         self.button_next = QPushButton(self)
         self.button_last = QPushButton(self)
+
         for b in (
             self.button_first,
             self.button_prev,
@@ -615,12 +623,14 @@ class SwimmingResultsDialog(QDialog):
             self.button_last,
         ):
             b.setFixedWidth(48)
+
         center_layout.addWidget(self.button_first)
         center_layout.addWidget(self.button_prev)
         center_layout.addWidget(self.heat_input)
         center_layout.addWidget(self.button_next)
         center_layout.addWidget(self.button_last)
 
+        header_layout.addWidget(self.button_current)
         header_layout.addStretch()
         header_layout.addWidget(center)
         header_layout.addStretch()
