@@ -53,36 +53,9 @@ from sportorg.modules.live.live import live_client
 from sportorg.modules.teamwork.teamwork import Teamwork
 
 # TODO:
-# * [+] Проверить, проработать фокус ввода
-#   * [+] Что всегда верхняя левая ячейка
-#   * [=] Как действует табуляция?
-# * [+] Горячие клавиши:
-#   * [+] Alt+Left, Alt+Right — предыдущий, следующий заплыв
-#   * [+] Alt+Home, Alt+End — первый, последний заплыв
-#   * [+] Enter — следующая ячейка; завершить редактирование и следующая ячейка (как в Excel)
-#   * [+] Ctrl+S — применить изменения
-#   * [+] DoubleClick по имени — редактировать спортсмена
-#   * [+] DoubleClick по результату — редактировать результат?
-# * [+] Перевод
-#   * [+] Input
-#   * [+] Organization = Представитель
-#   * [+] Apply
-#   * [+] Полное наименование = Фамилия, имя
-#   * [+] Текущий заплыв = Текущий
-# * [+] Отправка результатов онлайн
-#   * [+] В нужном порядке, чтобы первые пять были с лучшим результатом
-# * [+] Обработка DNS и DNF
 # * [ ] Окно настроек
 #   * [ ] Количество дорожек
 #   * [ ] Сохранять в настройках SportOrg
-# * [+] Столбец: группа
-# * [+] Столбец: место / финишировало / всего
-# * [ ] Стили
-#   * [ ] Номер заплыва: крупный, по центру, более узкое поле
-#   * [ ] Более компактные кнопки << < > >>
-#   * [ ] Более крупный Input
-#   * [ ] Адекватные размеры окна
-# * [+] Создание SwimmingResultsModel() в __init__() лишнее? Создаётся в load_heat() сразу после этого
 
 # Supported status inputs (case-insensitive)
 DNS_INPUTS = {"dns", "днс", "нстарт", "н/старт"}
@@ -595,19 +568,27 @@ class SwimmingResultsDialog(QDialog):
         header_layout = QHBoxLayout(self.header)
 
         self.button_current = QPushButton(translate("Current"), self)
-        header_layout.addWidget(self.button_current)
 
         # center group
         center = QWidget(self)
         center_layout = QHBoxLayout(center)
         center_layout.setContentsMargins(0, 0, 0, 0)
-        self.button_first = QPushButton(self)
-        self.button_prev = QPushButton(self)
+
         self.heat_input = QLineEdit(self)
         self.heat_input.setValidator(QIntValidator(0, 999, self.heat_input))
-        self.heat_input.setFixedWidth(36)
+
+        self.heat_input.setFixedWidth(48)
+        nav_font = self.heat_input.font()
+        nav_font.setPointSize(12)
+        nav_font.setBold(True)
+        self.heat_input.setFont(nav_font)
+        self.heat_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.button_first = QPushButton(self)
+        self.button_prev = QPushButton(self)
         self.button_next = QPushButton(self)
         self.button_last = QPushButton(self)
+
         for b in (
             self.button_first,
             self.button_prev,
@@ -615,12 +596,14 @@ class SwimmingResultsDialog(QDialog):
             self.button_last,
         ):
             b.setFixedWidth(48)
+
         center_layout.addWidget(self.button_first)
         center_layout.addWidget(self.button_prev)
         center_layout.addWidget(self.heat_input)
         center_layout.addWidget(self.button_next)
         center_layout.addWidget(self.button_last)
 
+        header_layout.addWidget(self.button_current)
         header_layout.addStretch()
         header_layout.addWidget(center)
         header_layout.addStretch()
