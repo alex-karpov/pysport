@@ -1148,8 +1148,8 @@ class ResultSportident(Result):
         # * КП связки могут быть не засчитаны, если спортсмен взял связку в конце дистанции
         #   и в чипе есть лишние КП
 
-        novosibirsk_vybor_pairs = False
-        if novosibirsk_vybor_pairs:
+        NOVOSIBIRSK_VYBOR_PAIRS = False
+        if NOVOSIBIRSK_VYBOR_PAIRS:
             # Номера КП — строка ('31', '32')
 
             # pairs = {  # База для тестирования и отладки: data/2024-10-05_novosibirsk_vybor_pairs.json
@@ -1254,7 +1254,7 @@ class ResultSportident(Result):
                             is_unique = False
                             break
 
-                    if novosibirsk_vybor_pairs and is_unique:
+                    if NOVOSIBIRSK_VYBOR_PAIRS and is_unique:
                         if pair_first_cp_index >= 0 and cur_code == pair_second_cp_code:
                             # Встречен второй КП из пары
                             # * засчитать первый КП пары
@@ -1310,7 +1310,7 @@ class ResultSportident(Result):
                                 pair_intermediate_cp_index = -1
                                 pair_second_cp_code = ""
 
-                    if False and novosibirsk_vybor_pairs:
+                    if False and NOVOSIBIRSK_VYBOR_PAIRS:
                         if pair_reject_intermediate:
                             pair_reject_intermediate = False
                             is_unique = False

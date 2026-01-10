@@ -421,21 +421,53 @@ class ResultChecker:
         if NOVOSIBIRSK_VYBOR:
             forbidden_array = ["160", 160, "148", 148]
 
+        # Дистанция по выбору со связками КП.
+        # На карту нанесены связки КП (два КП соединены линией). Эти КП обязательно
+        # брать последовательно: можно в прямом порядке, можно в обратном. Если отмечен
+        # только один КП из связки, он засчитывается как обычный КП (1 балл). Если между
+        # двумя КП из связки отмечен хотя бы один другой КП, связка не засчитываются.
+        # Стоимость связки — 4 балла.
+        NOVOSIBIRSK_VYBOR_PAIRS_V2 = False
+        if NOVOSIBIRSK_VYBOR_PAIRS_V2:
+            pairs = {  # 27 декабря 2025 г., Ночное ориентирование
+                "AB": {"39": "46", "36": "41"},
+            }
+            person = result.person
+            group = person.group if person and person.group else None
+            pairs_in_group = pairs.get(group.name, {})
+
+            # Добавить обратный порядок взятия: {31: 32} -> {31: 32, 32: 31}
+            pairs_in_group.update({v: k for k, v in pairs_in_group.items()})
+            pairs_score_bonus = 2  # Стоимость связки (4 балла) минус стоимость двух КП
+
         user_array = []
         score = 0
 
         for cur_split in result.splits:
             code = str(cur_split.code)
+            cur_split.is_correct = False
             if NOVOSIBIRSK_VYBOR:
                 if score >= len(result.person.group.course.controls):
                     continue
                 if code not in set(user_array + forbidden_array) or allow_duplicates:
                     user_array.append(code)
                     score += ResultChecker.get_control_score(code)
+                    cur_split.is_correct = True
             else:
                 if code not in user_array or allow_duplicates:
                     user_array.append(code)
                     score += ResultChecker.get_control_score(code)
+                    cur_split.is_correct = True
+
+        if NOVOSIBIRSK_VYBOR_PAIRS_V2:
+            prev_code = ""
+            for cur_split in result.splits:
+                code = str(cur_split.code)
+                if code in pairs_in_group and pairs_in_group[code] == prev_code:
+                    score += pairs_score_bonus
+                    pairs_in_group.pop(code)
+                    pairs_in_group.pop(prev_code)
+                prev_code = code
 
         return score
 
