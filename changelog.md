@@ -33,6 +33,7 @@
 + Fixed: wiping the file by saving or auto-saving if the file could not be opened ([#502](https://github.com/sportorg/pysport/issues/502))
 + Fixed reversed line order when opening the file ([#509](https://github.com/sportorg/pysport/issues/509))
 + Fixed a split printout error when a participant’s group or course was not found ([#526](https://github.com/sportorg/pysport/issues/526))
++ Fixed quick start group input using Alt+number ([#536](https://github.com/sportorg/pysport/issues/536))
 
 ## 2025-04-01
 
