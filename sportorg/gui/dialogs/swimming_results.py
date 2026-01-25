@@ -1,4 +1,5 @@
 import logging
+import time
 from collections import defaultdict
 from typing import Any, List, Optional, Union
 
@@ -45,6 +46,7 @@ from sportorg.models.memory import (
     Person,
     Result,
     ResultManual,
+    ResultSportident,
     ResultStatus,
     race,
 )
@@ -536,6 +538,14 @@ class SwimmingResultsModel(QAbstractTableModel):
             recalculate_results(recheck_results=False)
             data = sorted(changed_results, key=lambda r: r.get_result(), reverse=True)
             live_client.send(data)
+            if len(data) > 4:
+                # При отсылке большого количества результатов orgeo показывает
+                # только первые четыре, а пятый остаётся старым
+                time.sleep(0.3)
+                live_client.send(data[4])
+                time.sleep(0.3)
+                live_client.send(data[:4])
+
             Teamwork().send([r.to_dict() for r in changed_results])
             app_obj = GlobalAccess().get_app()
             if app_obj is not None:
