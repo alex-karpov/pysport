@@ -512,7 +512,7 @@ class SwimmingResultsModel(QAbstractTableModel):
                 has_changes = True
             else:
                 # create new manual result if input not zero OR create even for zero as requested
-                result = race_obj.new_result(ResultManual)
+                result = race_obj.new_result(ResultSportident)
                 result.person = person
                 result.finish_time = otime
                 if status_preview:
