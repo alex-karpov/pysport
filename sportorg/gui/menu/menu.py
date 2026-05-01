@@ -47,6 +47,11 @@ def menu_list():
                     "action": "EventSettingsAction",
                 },
                 {
+                    "title": translate("Multi day"),
+                    "shortcut": "Ctrl+M",
+                    "action": "MultiDayAction",
+                },
+                {
                     "type": "separator",
                 },
                 {

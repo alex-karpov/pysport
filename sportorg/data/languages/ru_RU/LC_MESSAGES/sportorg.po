@@ -1900,6 +1900,9 @@ msgstr "Другой (26-254)"
 msgid "Apply"
 msgstr "Применить"
 
+msgid "Close"
+msgstr "Закрыть"
+
 msgid "Set new number for the connected station"
 msgstr "Задать новый номер подключённой станции"
 

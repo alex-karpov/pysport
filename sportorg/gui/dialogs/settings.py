@@ -9,9 +9,7 @@ try:
         QDialog,
         QDialogButtonBox,
         QFormLayout,
-        QHBoxLayout,
         QLabel,
-        QMessageBox,
         QPushButton,
         QTabWidget,
         QWidget,
@@ -24,9 +22,7 @@ except ModuleNotFoundError:
         QDialog,
         QDialogButtonBox,
         QFormLayout,
-        QHBoxLayout,
         QLabel,
-        QMessageBox,
         QPushButton,
         QTabWidget,
         QWidget,
@@ -37,20 +33,8 @@ from sportorg.common.audio import get_sounds
 from sportorg.common.template import get_templates
 from sportorg.gui.dialogs.file_dialog import get_existing_directory
 from sportorg.gui.global_access import GlobalAccess
-from sportorg.gui.utils.custom_controls import messageBoxQuestion
 from sportorg.gui.utils.custom_controls import AdvComboBox, AdvSpinBox
 from sportorg.language import get_languages, translate
-from sportorg.models.memory import (
-    add_race,
-    copy_race,
-    del_race,
-    get_current_race_index,
-    move_down_race,
-    move_up_race,
-    races,
-    set_current_race_index,
-)
-from sportorg.modules.teamwork.teamwork import Teamwork
 
 
 class Tab:
@@ -198,133 +182,6 @@ class SoundTab(Tab):
         settings.SETTINGS.sound_enter_number_path = self.item_enter_number.currentText()
 
 
-class MultidayTab(Tab):
-    def __init__(self, parent):
-        self.widget = QWidget()
-        self.layout = QFormLayout(parent)
-
-        self.buttons_layout = QHBoxLayout()
-        self.button_container = QWidget()
-        self.button_container.setLayout(self.buttons_layout)
-
-        self.widget.setLayout(self.layout)
-
-        self.item_races = AdvComboBox()
-        self.fill_race_list()
-        self.item_races.currentIndexChanged.connect(self.select_race)
-        self.layout.addRow(self.item_races)
-
-        def add_race_function():
-            add_race()
-            self.fill_race_list()
-
-        self.item_new = QPushButton(translate("New"))
-        self.item_new.clicked.connect(add_race_function)
-        self.buttons_layout.addWidget(self.item_new)
-
-        def copy_race_function():
-            copy_race()
-            self.fill_race_list()
-
-        self.item_copy = QPushButton(translate("Copy"))
-        self.item_copy.clicked.connect(copy_race_function)
-        self.buttons_layout.addWidget(self.item_copy)
-
-        def move_up_race_function():
-            if get_current_race_index() <= 0:
-                return
-            if not self._confirm_day_switch_teamwork_stop():
-                return
-            move_up_race()
-            self.fill_race_list()
-            self._refresh_main_window_after_day_switch()
-
-        self.item_move_up = QPushButton(translate("Move up"))
-        self.item_move_up.clicked.connect(move_up_race_function)
-        self.buttons_layout.addWidget(self.item_move_up)
-
-        def move_down_race_function():
-            if get_current_race_index() >= len(races()) - 1:
-                return
-            if not self._confirm_day_switch_teamwork_stop():
-                return
-            move_down_race()
-            self.fill_race_list()
-            self._refresh_main_window_after_day_switch()
-
-        self.item_move_down = QPushButton(translate("Move down"))
-        self.item_move_down.clicked.connect(move_down_race_function)
-        self.buttons_layout.addWidget(self.item_move_down)
-
-        def del_race_function():
-            if len(races()) <= 1:
-                return
-            if not self._confirm_day_switch_teamwork_stop():
-                return
-            del_race()
-            self.fill_race_list()
-            self._refresh_main_window_after_day_switch()
-
-        self.item_del = QPushButton(translate("Delete"))
-        self.item_del.clicked.connect(del_race_function)
-        self.buttons_layout.addWidget(self.item_del)
-
-        self.layout.addRow(self.button_container)
-
-    def save(self):
-        pass
-
-    def select_race(self, _index=None):
-        index = self.item_races.currentIndex()
-        if index < 0 or index == get_current_race_index():
-            return
-
-        if not self._confirm_day_switch_teamwork_stop():
-            self.item_races.blockSignals(True)
-            self.item_races.setCurrentIndex(get_current_race_index())
-            self.item_races.blockSignals(False)
-            return
-
-        set_current_race_index(index)
-        self._refresh_main_window_after_day_switch()
-
-    def fill_race_list(self):
-        race_list = []
-        index = get_current_race_index()
-
-        self.item_races.clear()
-        for cur_race in races():
-            race_list.append(
-                cur_race.data.short_title or str(cur_race.data.get_start_datetime())
-            )
-        self.item_races.addItems(race_list)
-
-        self.item_races.setCurrentIndex(index)
-
-    @staticmethod
-    def _refresh_main_window_after_day_switch():
-        main_window = GlobalAccess().get_main_window()
-        main_window.init_model()
-        main_window.set_title()
-
-    @staticmethod
-    def _confirm_day_switch_teamwork_stop() -> bool:
-        if not Teamwork().is_alive():
-            return True
-
-        answer = messageBoxQuestion(
-            GlobalAccess().get_main_window(),
-            translate("Question"),
-            translate("Teamwork will be disabled, do you really want to continue?"),
-            QMessageBox.Yes | QMessageBox.No,
-        )
-        if answer != QMessageBox.Yes:
-            return False
-
-        Teamwork().stop()
-        return True
-
-
 class TemplateTab(Tab):
     def __init__(self, parent):
         self.widget = QWidget()
@@ -381,7 +238,6 @@ class SettingsDialog(QDialog):
         self.widgets = [
             (MainTab(self), translate("Main settings")),
             (SoundTab(self), translate("Sounds")),
-            (MultidayTab(self), translate("Multi day")),
             (TemplateTab(self), translate("Templates directory")),
         ]
 

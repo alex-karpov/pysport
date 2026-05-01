@@ -23,10 +23,12 @@ from sportorg.gui.dialogs.event_properties import EventPropertiesDialog
 from sportorg.gui.dialogs.file_dialog import get_open_file_name, get_save_file_name
 from sportorg.gui.dialogs.filter_dialog import DialogFilter
 from sportorg.gui.dialogs.group_mass_edit import GroupMassEditDialog
+from sportorg.gui.dialogs.huichang_management_dialog import HuichangManagementDialog
 from sportorg.gui.dialogs.import_persons_table_dialog import ImportPersonsTableDialog
 from sportorg.gui.dialogs.live_dialog import LiveDialog
 from sportorg.gui.dialogs.marked_route_dialog import MarkedRouteDialog
 from sportorg.gui.dialogs.merge_results import MergeResultsDialog
+from sportorg.gui.dialogs.multiday_dialog import MultidayDialog
 from sportorg.gui.dialogs.not_start_dialog import InputStartNumbersDialog
 from sportorg.gui.dialogs.organization_mass_edit import OrganizationMassEditDialog
 from sportorg.gui.dialogs.print_properties import PrintPropertiesDialog
@@ -48,13 +50,12 @@ from sportorg.gui.dialogs.teamwork_properties import TeamworkPropertiesDialog
 from sportorg.gui.dialogs.telegram_dialog import TelegramDialog
 from sportorg.gui.dialogs.text_io import TextExchangeDialog
 from sportorg.gui.dialogs.timekeeping_properties import TimekeepingPropertiesDialog
-from sportorg.gui.dialogs.huichang_management_dialog import HuichangManagementDialog
 from sportorg.gui.menu.action import Action
 from sportorg.gui.utils.custom_controls import messageBoxQuestion
 from sportorg.language import translate
 from sportorg.libs.sfr import sfrximporter
 from sportorg.libs.winorient.wdb import write_wdb
-from sportorg.models.memory import ResultManual, ResultStatus, race, SystemType
+from sportorg.models.memory import ResultManual, ResultStatus, SystemType, race
 from sportorg.models.result.result_checker import ResultChecker
 from sportorg.models.result.result_tools import recalculate_results
 from sportorg.models.start.start_preparation import (
@@ -64,6 +65,7 @@ from sportorg.models.start.start_preparation import (
 )
 from sportorg.modules.backup.file import is_gzip_file
 from sportorg.modules.backup.json import get_races_from_file
+from sportorg.modules.huichang.huichang import HuichangClient
 from sportorg.modules.iof import iof_xml
 from sportorg.modules.live.live import live_client
 from sportorg.modules.ocad import ocad
@@ -79,7 +81,6 @@ from sportorg.modules.sfr.sfrreader import SFRReaderClient
 from sportorg.modules.sportident.sireader import SIReaderClient
 from sportorg.modules.sportiduino.sportiduino import SportiduinoClient
 from sportorg.modules.srpid.srpid import SrpidClient
-from sportorg.modules.huichang.huichang import HuichangClient
 from sportorg.modules.teamwork.teamwork import (
     Teamwork,
     configure_teamwork_from_settings,
@@ -161,6 +162,11 @@ class SettingsAction(Action, metaclass=ActionFactory):
 class EventSettingsAction(Action, metaclass=ActionFactory):
     def execute(self):
         EventPropertiesDialog().exec_()
+
+
+class MultiDayAction(Action, metaclass=ActionFactory):
+    def execute(self):
+        MultidayDialog().exec_()
 
 
 class CSVWinorientImportAction(Action, metaclass=ActionFactory):
