@@ -1,6 +1,7 @@
 import logging
 import time
 import uuid
+import os
 from os import remove
 from typing import Any, Dict, Type
 
@@ -55,8 +56,18 @@ from sportorg.gui.utils.custom_controls import messageBoxQuestion
 from sportorg.language import translate
 from sportorg.libs.sfr import sfrximporter
 from sportorg.libs.winorient.wdb import write_wdb
-from sportorg.models.memory import ResultManual, ResultStatus, race, SystemType
+from sportorg.models.memory import (
+    ResultManual,
+    ResultSportident,
+    ResultStatus,
+    race,
+    SystemType,
+)
 from sportorg.models.result.result_checker import ResultChecker
+from sportorg.models.result.photo_controls import (
+    append_photo_controls,
+    load_team_controls,
+)
 from sportorg.models.result.result_tools import recalculate_results
 from sportorg.models.start.start_preparation import (
     copy_bib_to_card_number,
@@ -637,6 +648,37 @@ class SplitPrintoutAction(Action, metaclass=ActionFactory):
 
 class RecheckingAction(Action, metaclass=ActionFactory):
     def execute(self):
+        recalculate_results()
+        race().rebuild_indexes()
+        self.app.refresh()
+
+
+class UpdatePhotoControlsAction(Action, metaclass=ActionFactory):
+    def execute(self):
+        csv_path = settings.SETTINGS.rogaine_photo_controls_path
+        if not csv_path or not os.path.exists(csv_path):
+            QMessageBox.warning(
+                self.app,
+                translate("Update photo controls from CSV"),
+                translate("Set a valid CSV path in Settings first"),
+            )
+            return
+
+        try:
+            team_controls = load_team_controls(csv_path)
+        except OSError as e:
+            logging.exception(e)
+            QMessageBox.warning(
+                self.app,
+                translate("Update photo controls from CSV"),
+                str(e),
+            )
+            return
+
+        for result in race().results:
+            if isinstance(result, ResultSportident):
+                append_photo_controls(result, team_controls)
+
         recalculate_results()
         race().rebuild_indexes()
         self.app.refresh()

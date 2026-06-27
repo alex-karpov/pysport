@@ -50,6 +50,10 @@ from sportorg.models.memory import (
     races,
     set_current_race_index,
 )
+from sportorg.models.result.photo_controls import (
+    append_photo_controls,
+    load_team_controls,
+)
 from sportorg.models.result.result_tools import recalculate_results
 from sportorg.models.result.split_calculation import GroupSplits
 from sportorg.modules.backup.file import File
@@ -817,7 +821,21 @@ class MainWindow(QMainWindow):
                 if rg.add_result():
                     result = rg.get_result()
                     group = result.person.group if result.person else None
-                    recalculate_results(recheck_results=False, group=group)
+
+                    feature = settings.is_feature_enabled(
+                        settings.FEATURE_ROGAINE_PHOTO_CONTROLS
+                    )
+                    if feature:
+                        csv_path = settings.SETTINGS.rogaine_photo_controls_path
+                        if csv_path and exists(csv_path):
+                            try:
+                                append_photo_controls(
+                                    result, load_team_controls(csv_path)
+                                )
+                            except OSError as e:
+                                logging.exception(e)
+
+                    recalculate_results(recheck_results=feature, group=group)
                     if race().get_setting("split_printout", False):
                         try:
                             split_printout([result])
