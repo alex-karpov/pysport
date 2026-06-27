@@ -1,10 +1,10 @@
 import logging
 import sys
-from datetime import datetime
 from multiprocessing import Process
 
-from sportorg import config
 from sportorg.common.fake_std import FakeStd
+from sportorg.config import NAME, log_dir
+from sportorg.logging import make_log_filename
 from sportorg.utils.time import time_to_hhmmss
 
 
@@ -17,10 +17,8 @@ class BackupProcess(Process):
         try:
             sys.stdout = FakeStd()
             sys.stderr = FakeStd()
-            with open(
-                config.log_dir("si{}.log".format(datetime.now().strftime("%Y%m%d"))),
-                "a",
-            ) as f:
+            log_filename = make_log_filename(prefix=NAME.lower(), suffix="sportident")
+            with open(log_dir(log_filename), "a") as f:
                 f.write(self.data)
         except Exception as e:
             logging.error(str(e))
