@@ -860,7 +860,7 @@ class Result(ABC):
                 return OTime()  # result not found in that day
         return sum_result
 
-    def get_start_time(self):
+    def get_start_time(self) -> OTime:
         if self.person and self.person.group:
             group = self.person.group
             if group.get_type() == RaceType.PURSUIT:
