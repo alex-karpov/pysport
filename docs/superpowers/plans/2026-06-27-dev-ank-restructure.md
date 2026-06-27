@@ -11,6 +11,7 @@
 ## Global Constraints
 
 - Base branch: `ank/dev` is created from `master` (`c11c36d9`). `master` == `origin/master` == `upstream/master` == merge-base with `dev-ank`.
+- Build `ank/dev` in a dedicated git **worktree** (separate directory) so the `openspec-base` working tree — which holds all claude/openspec files (`CLAUDE.md`, `memory/`, `docs/superpowers`, `openspec/`, none of which exist on `master`/`dev-ank`) — is left untouched and cannot leak into `ank/dev`.
 - Authoritative source of content: the net diff `git diff master..dev-ank` (dev-ank tip = `ab3559e0`). The dev-ank commit history is NOT used.
 - Conventional Commits messages, present tense, no trailing period, ≤70 chars summary.
 - Do NOT run `ruff format` or otherwise reformat — reproduce dev-ank content verbatim (it is already ruff-formatted; `[tool.ruff.lint] select = []` means no lint rules).
@@ -139,12 +140,20 @@ git status --short                      # expect empty
 git rev-parse master ab3559e0 dev-ank   # master==c11c36d9; dev-ank tip==ab3559e0
 ```
 
-- [ ] **Step 2: Create the branch**
+- [ ] **Step 2: Create an isolated worktree for ank/dev**
 
+Build in a separate directory so `openspec-base` (and every claude/openspec file) stays untouched and no stray untracked files can leak into `ank/dev`.
 ```bash
-git switch -c ank/dev master
+git worktree add C:/Users/ank/Documents/Prog/SportOrg/pysport-ankdev -b ank/dev master
+cd C:/Users/ank/Documents/Prog/SportOrg/pysport-ankdev
 ```
-Expected: "Switched to a new branch 'ank/dev'".
+Run all remaining tasks from this worktree directory. Then one-time environment setup (fresh `.venv` + Rust ext — `uv sync` uses hatchling and does NOT build the crate):
+```bash
+uv sync --frozen
+uv run poe develop-rust          # maturin develop: compiles crates/sportorg-core (otime) into the venv
+uv run python -c "from sportorg.common.otime import OTime; print(OTime(1))"
+```
+Expected: prints an OTime value (Rust ext importable). Requires the Rust toolchain (pinned by `rust-toolchain.toml`); build takes a few minutes the first time only.
 
 - [ ] **Step 3: Capture the dev-ank baseline (calibrates "green")**
 
@@ -191,7 +200,7 @@ Expected: exit 0 (includes the new `tests/test_relay_results.py`).
 
 - [ ] **Step 5: Commit**
 ```bash
-git add -A
+git add <files listed in this task's **Files** block>
 git commit -m "feat(relay): place relay teams as in all-Russian competitions"
 ```
 
@@ -217,7 +226,7 @@ git show "dev-ank:sportorg/data/templates/split/1_сплиты_с_лидерам
 
 - [ ] **Step 5: Commit**
 ```bash
-git add -A
+git add <files listed in this task's **Files** block>
 git commit -m "feat(results): relay bib format 15.1 and split display"
 ```
 
@@ -243,7 +252,7 @@ git show dev-ank:sportorg/modules/sportident/backup.py > sportorg/modules/sporti
 
 - [ ] **Step 4: Commit**
 ```bash
-git add -A
+git add <files listed in this task's **Files** block>
 git commit -m "feat(logging): daily rotating log files"
 ```
 
@@ -286,7 +295,7 @@ Then with `Edit`, delete (a) all 5 `NOVOSIBIRSK_VYBOR_PAIRS_V2 = False` blocks a
 
 - [ ] **Step 7: Commit**
 ```bash
-git add -A
+git add <files listed in this task's **Files** block>
 git commit -m "feat(rogaine): configurable Novosibirsk vybor scoring"
 ```
 
@@ -316,7 +325,7 @@ git show dev-ank:tests/test_photo_controls.py > tests/test_photo_controls.py
 
 - [ ] **Step 6: Commit**
 ```bash
-git add -A
+git add <files listed in this task's **Files** block>
 git commit -m "feat(rogaine): import photo controls from CSV"
 ```
 
@@ -345,7 +354,7 @@ git show dev-ank:sportorg/modules/winorient/wdb.py > sportorg/modules/winorient/
 
 - [ ] **Step 5: Commit**
 ```bash
-git add -A
+git add <files listed in this task's **Files** block>
 git commit -m "feat(live): multiday send and online-CP status"
 ```
 
@@ -363,7 +372,7 @@ git show dev-ank:sportorg/modules/winorient/winorient.py > sportorg/modules/wino
 - [ ] **Step 3: Green check** — `uv run poe test-fast` → exit 0.
 - [ ] **Step 4: Commit**
 ```bash
-git add -A
+git add <files listed in this task's **Files** block>
 git commit -m "feat(winorient): drop duplicate cards, parse в/к and лично on CSV import"
 ```
 
@@ -384,7 +393,7 @@ git show dev-ank:sportorg/utils/time.py > sportorg/utils/time.py
 - [ ] **Step 4: Green check** — `uv run poe test-fast` → exit 0.
 - [ ] **Step 5: Commit**
 ```bash
-git add -A
+git add <files listed in this task's **Files** block>
 git commit -m "fix(time): accept comma as decimal separator in hh:mm:ss parsing"
 ```
 
@@ -403,7 +412,7 @@ git commit -m "fix(time): accept comma as decimal separator in hh:mm:ss parsing"
 - [ ] **Step 4: Green check** — `uv run poe test-fast` → exit 0.
 - [ ] **Step 5: Commit**
 ```bash
-git add -A
+git add <files listed in this task's **Files** block>
 git commit -m "feat: marked route penalty-lap check by station code"
 ```
 
@@ -418,7 +427,7 @@ git commit -m "feat: marked route penalty-lap check by station code"
 - [ ] **Step 3: Green check** — `uv run poe test-fast` → exit 0 (block is inert).
 - [ ] **Step 4: Commit**
 ```bash
-git add -A
+git add <files listed in this task's **Files** block>
 git commit -m "chore(experimental): Nizhny Novgorod relay finish-by-station"
 ```
 
@@ -433,7 +442,7 @@ git commit -m "chore(experimental): Nizhny Novgorod relay finish-by-station"
 - [ ] **Step 3: Green check** — `uv run poe test-fast` → exit 0.
 - [ ] **Step 4: Commit**
 ```bash
-git add -A
+git add <files listed in this task's **Files** block>
 git commit -m "chore(experimental): Novosibirsk vybor paired controls v1"
 ```
 
@@ -448,7 +457,7 @@ git commit -m "chore(experimental): Novosibirsk vybor paired controls v1"
 - [ ] **Step 3: Green check** — `uv run poe test-fast` → exit 0.
 - [ ] **Step 4: Commit**
 ```bash
-git add -A
+git add <files listed in this task's **Files** block>
 git commit -m "chore(experimental): Novosibirsk vybor classic"
 ```
 
@@ -463,7 +472,7 @@ git commit -m "chore(experimental): Novosibirsk vybor classic"
 - [ ] **Step 3: Green check** — `uv run poe test-fast` → exit 0.
 - [ ] **Step 4: Commit**
 ```bash
-git add -A
+git add <files listed in this task's **Files** block>
 git commit -m "chore(experimental): Novosibirsk vybor paired controls v2"
 ```
 
@@ -478,7 +487,7 @@ git commit -m "chore(experimental): Novosibirsk vybor paired controls v2"
 - [ ] **Step 3: Green check** — `uv run poe test-fast` → exit 0.
 - [ ] **Step 4: Commit**
 ```bash
-git add -A
+git add <files listed in this task's **Files** block>
 git commit -m "chore(experimental): Tomsk marked route"
 ```
 
@@ -494,7 +503,7 @@ git show dev-ank:doc/dev-ank-contributing.md > doc/dev-ank-contributing.md
 ```
 - [ ] **Step 2: Commit**
 ```bash
-git add -A
+git add <files listed in this task's **Files** block>
 git commit -m "docs: add dev-ank contributing notes"
 ```
 
@@ -516,7 +525,7 @@ git diff dev-ank -- sportorg/modules/printing/printout_split.py
 
 - [ ] **Step 3: Commit**
 ```bash
-git add -A
+git add <files listed in this task's **Files** block>
 git commit -m "chore(misc): cosmetic leftovers to match dev-ank"
 ```
 
@@ -535,6 +544,13 @@ Expected: exit 0 (matches dev-ank's lint status).
 - [ ] **Step 7: Review the shape**
 ```bash
 git log --oneline master..ank/dev      # expect 16 commits, T1..TM in order
+```
+
+- [ ] **Step 8: Worktree disposition**
+The `ank/dev` branch now exists in the shared repo. Leave the worktree in place for review, or remove it once satisfied (the branch persists):
+```bash
+cd C:/Users/ank/Documents/Prog/SportOrg/pysport      # back to main checkout (openspec-base)
+git worktree remove C:/Users/ank/Documents/Prog/SportOrg/pysport-ankdev   # optional; branch ank/dev is kept
 ```
 
 ---
