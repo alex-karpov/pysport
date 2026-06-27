@@ -1,7 +1,9 @@
 import platform
 
+from sportorg import settings
 from sportorg.language import translate
 from sportorg.models.memory import Group, Result, ResultStatus, race
+from sportorg.models.result.photo_controls import is_photo_mark
 from sportorg.models.result.result_calculation import ResultCalculation
 
 if platform.system() == "Windows":  # current realisation works on Windows only
@@ -170,7 +172,9 @@ class SportorgPrinter:
         fs_large = 4
 
         # Information about start
-        self.print_line(obj.data.title, fn, fs_main)
+        title = obj.data.description.split("<br>")
+        for line in title:
+            self.print_line(line, fn, fs_main)
         self.print_line(
             str(obj.data.start_datetime)[:10] + ", " + obj.data.location, fn, fs_main
         )
@@ -235,6 +239,17 @@ class SportorgPrinter:
                     + split.speed
                     + " "
                 )
+
+                if settings.is_feature_enabled(
+                    settings.FEATURE_ROGAINE_PHOTO_CONTROLS
+                ) and is_photo_mark(split, result.get_start_time()):
+                    line = (
+                        ("  " + str(split.course_index + 1))[-3:]
+                        + " "
+                        + ("  " + split.code)[-3:]
+                        + " "
+                        + f"ФОТО КП        "  # ФОТО КП
+                    )
 
                 if not is_relay:
                     line += ("  " + str(split.leg_place))[-3:]
