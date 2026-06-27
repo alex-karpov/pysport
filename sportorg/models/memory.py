@@ -1215,6 +1215,43 @@ class ResultSportident(Result):
                     elif int(i.code) < 100:
                         i.code = str(int(i.code) + (100 if is_first_lap else 200))
 
+        # Дистанция в заданном направлении + выбор
+        # На карту нанесена дистанция в заданном направлении. Кроме того, на карту
+        # нанесены дополнительные КП. Эти КП можно брать в любом порядке по ходу
+        # дистанции. Необходисмо пройти основную дистанцию, а также взять не менее N КП
+        # из дополнительных.
+        # Если не взял выбор — DSQ, основная дистанция не проверяется
+        NOVOSIBIRSK_VYBOR_CLASSIC = False
+        if NOVOSIBIRSK_VYBOR_CLASSIC:
+            vybor_courses = {  # 8 марта 2026 г., Университетский лес
+                "А": {
+                    "num_optional": 10,
+                    "optional": {42, 43, 44, 45, 46, 47, 48, 49, 50, 52},
+                },
+                "В": {
+                    "num_optional": 8,
+                    "optional": {33, 44, 49, 51, 53, 54, 55, 56},
+                },
+                "С": {
+                    "num_optional": 5,
+                    "optional": {37, 42, 44, 48, 53},
+                },
+            }
+            vybor_variant = vybor_courses.get(course.name, {})
+            vybor_count = vybor_variant.get("num_optional", 0)
+            vybor_controls = vybor_variant.get("optional", set())
+            vybor_controls = set(str(code) for code in vybor_controls)
+            vybor_recognized = 0
+
+            for i in range(len(self.splits)):
+                split = self.splits[i]
+                if split.code in vybor_controls:
+                    split.has_penalty = False
+                    vybor_recognized += 1
+                    vybor_controls.remove(split.code)
+            if vybor_recognized < vybor_count:
+                return False
+
         for i in range(len(self.splits)):
             try:
                 split = self.splits[i]
