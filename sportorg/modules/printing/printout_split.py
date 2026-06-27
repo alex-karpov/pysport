@@ -250,6 +250,17 @@ class SportorgPrinter:
                         + f"ФОТО КП        "  # ФОТО КП
                     )
 
+                if settings.is_feature_enabled(
+                    settings.FEATURE_ROGAINE_PHOTO_CONTROLS
+                ) and is_photo_mark(split, result.get_start_time()):
+                    line = (
+                        ("  " + str(split.course_index + 1))[-3:]
+                        + " "
+                        + ("  " + split.code)[-3:]
+                        + " "
+                        + f"ФОТО КП        "  # ФОТО КП
+                    )
+
                 if not is_relay:
                     line += ("  " + str(split.leg_place))[-3:]
 
