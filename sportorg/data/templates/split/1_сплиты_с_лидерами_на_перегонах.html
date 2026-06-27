@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>{{name}} Split</title>
+    {% raw %}
+    <style>
+      td {
+        padding-right: 2px;
+      }
+      .leg_table {
+        font-family: "Bahschrift Condensed";
+        font-size: 11px;
+        line-height: 13px;
+        font-weight: bolder;
+        border-collapse: collapse;
+      }
+      .leg_table td {
+        padding-right: 3px;
+      }
+
+      .border_top {
+        border-top: 1px solid #000;
+        padding-left: 2px;
+      }
+      .border_bottom {
+        border-bottom: 1px solid #000;
+        padding-left: 2px;
+      }
+      code {
+        font-family: Lucida console;
+        font-weight: normal;
+        font-size: 12px;
+        line-height: 14px;
+      }
+      code2 {
+        font-family: Lucida console;
+        font-weight: bold;
+        font-size: 15px;
+      }
+    </style>
+    {% endraw %}
+  </head>
+  <body>
+    <code>
+      {% if person.is_rented_card %}
+      <code2>Пожалуйста, не забудьте <br />СДАТЬ арендованный ЧИП</code2
+      ><br /><br />
+      {%endif%} {{ race.data.title }}
+      <div style="height: 12px; font-size: 12px">&nbsp;</div>
+      {{ race.data.start_datetime|date }}, {{ race.data.location }}
+      <br />
+      <code2>{{ person.surname }} {{ person.name }}</code2> <br />
+      Группа: {{ group.name }} <br />
+      Команда: {{organization.name}} <br />
+      Номер: {{person.bib}} <br />
+      Старт: {{result.start_msec|tohhmmss}}
+      <table class="leg_table">
+        {% for leg in result.splits %} {% if leg.is_correct %}
+        <tr>
+          <td rowspan="2" class="border_bottom border_top">
+            {{leg.course_index}}
+          </td>
+          <td rowspan="2" class="border_bottom border_top">{{leg.code}}</td>
+          <td class="border_top">
+            {{leg.relative_time|tohhmmss}}({{leg.relative_place}})
+          </td>
+
+          <td rowspan="2" class="border_bottom border_top">{{leg.speed}}</td>
+          {% set TIME_LEADER_LAP = []%} {% if leg.leg_place == 1 %}
+          <td class="border_top">{{person.name[0]}}.{{person.surname}}</td>
+          {%else%} {% set counter = [0] %} {% set ZAPIS = [0] %} {% for human in
+          race.persons %} {% if counter.append(counter.pop() + 1) %} {% endif %}
+          {% if human.group_id == person.group_id and human.id != person.id and
+          ZAPIS[0] < 1 %} {% set person_ID = [human.id] %} {% set FIO =
+          [human.name,human.surname] %} {% for human_result in race.results %}
+          {% if human_result.person_id == person_ID[0] %} {% for human_leg in
+          human_result.splits %} {% if leg.code == human_leg.code and
+          human_leg.leg_place == 1 and leg.leg_time > human_leg.leg_time and
+          human_leg.course_index == leg.course_index%}
+          <td class="border_top">
+            {% if ZAPIS[0] < 1 %}{{FIO[0][0]}}.{{FIO[1]}} {% if
+            TIME_LEADER_LAP.append((leg.leg_time-human_leg.leg_time)|tohhmmss('%M:%S'))%}
+            {%endif%} {%endif%}
+          </td>
+          {% if ZAPIS.append(ZAPIS.pop()+1) %} {%endif%} {%else%} {%endif%}
+          {%endfor%} {%endif%} {% endfor %} {% endif %} {% endfor %} {%endif%}
+        </tr>
+        <tr>
+          <td class="border_bottom">
+            {{leg.leg_time|tohhmmss('%M:%S')}}{% if leg.leg_place %}
+            ({{leg.leg_place}}) {% endif %}
+          </td>
+
+          {% if leg.leg_place == 1 %}
+          <td class="border_bottom"></td>
+          {%else%}
+          <td class="border_bottom LEG_LEADER">-{{TIME_LEADER_LAP[0]}}</td>
+          {%endif%}
+        </tr>
+        {% else %}
+        <tr>
+          <td></td>
+          <td>{{leg.code}}</td>
+          <td>{{leg.relative_time|tohhmmss}}</td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        {% endif %} {% endfor %}
+      </table>
+      <div style="height: 12px; font-size: 12px">&nbsp;</div>
+      Финиш: в {{result.finish_msec|tohhmmss}} за {{(result.finish_msec -
+      result.splits[-1].relative_time - result.start_msec)|tohhmmss('%M:%S')}}
+      <br />
+      Результат: {{result.result}} Темп: {{result.speed}} {% if result.place > 0
+      %}
+      <br />
+      Место: {{result.place}} из {{group.count_finished}} (всего
+      {{group.count_person}}) {% endif %} {% if "can_win_count" in result %} {%
+      if result.can_win_count > 0 %} <br />Вас могут выиграть:
+      {{result.can_win_count}} чел. <br />В {{result.final_result_time}}
+      определится результат {% else %} <br />Вас уже никто не обгонит! {% endif
+      %} {% endif %}
+      <br />
+      {% if result.status != 1 %}
+      <code2>Отметка: ПЛОХАЯ</code2>
+      <br />
+      {% for control in course.controls %} {{control.code}} {% endfor %} {% else
+      %}
+      <code2>Отметка: ОК</code2>
+      {% endif %}
+      <br />
+      <br />
+      Предварительные результаты
+      <table>
+        {% for item in items %} {% if item.result.place|int < 11 and
+        item.result.place|int > 0 %}
+        <tr>
+          <td>{{item.result.place}}</td>
+          <td>{{item.person.surname}} {{item.person.name}}</td>
+          <td>{{item.result.result}}</td>
+        </tr>
+        {% endif %} {% endfor %}
+      </table>
+      <br />
+      <br />
+      {{ race.data.url }}
+      <!-- 
+		<br><img src="C:\img.png"  width="150" align="left"> 
+		-->
+      <!-- <br />
+      <img
+        src="C:\Program Files (x86)\SportOrg\templates\split\qr-code.png"
+        width="200"
+      />
+      <br />
+      <img
+        src="C:\Program Files (x86)\SportOrg\templates\split\img.png"
+        width="200"
+      /> -->
+    </code>
+  </body>
+</html>
