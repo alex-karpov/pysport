@@ -404,6 +404,11 @@ def menu_list():
                     "action": "RecheckingAction",
                 },
                 {
+                    "title": translate("Update photo controls from CSV"),
+                    "action": "UpdatePhotoControlsAction",
+                    "feature": settings.FEATURE_ROGAINE_PHOTO_CONTROLS,
+                },
+                {
                     "title": translate("Find group by punches"),
                     "tabs": [1],
                     "shortcut": "Ctrl+G",

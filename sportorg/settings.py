@@ -14,6 +14,7 @@ FEATURE_SRPID = "srpid"
 FEATURE_HUICHANG = "huichang"
 FEATURE_WINORIENT = "winorient"
 FEATURE_TELEGRAM = "telegram"
+FEATURE_ROGAINE_PHOTO_CONTROLS = "rogaine_photo_controls"
 DEFAULT_FEATURES = {
     FEATURE_SPORTIDENT: True,
     FEATURE_SFR: True,
@@ -23,6 +24,7 @@ DEFAULT_FEATURES = {
     FEATURE_HUICHANG: True,
     FEATURE_WINORIENT: True,
     FEATURE_TELEGRAM: True,
+    FEATURE_ROGAINE_PHOTO_CONTROLS: False,
 }
 
 
@@ -57,6 +59,7 @@ class Settings:
     ranking_ardf: Dict[str, Any] = field(default_factory=dict)
     live_gzip_enabled: bool = True
     features: Dict[str, bool] = field(default_factory=lambda: DEFAULT_FEATURES.copy())
+    rogaine_photo_controls_path: str = ""
     plugins: List[Dict[str, Any]] = field(default_factory=list)
     plugin_settings: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
