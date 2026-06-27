@@ -1813,6 +1813,12 @@ class Race:
                 if result.person in person_list:
                     return_results.append(result)
 
+            # Sort groups as in Groups tab
+            order = {group.name: index for index, group in enumerate(self.groups)}
+            return_groups = sorted(
+                list(return_groups), key=lambda group: order[group.name]
+            )
+
             return {
                 "object": self.__class__.__name__,
                 "id": str(self.id),
