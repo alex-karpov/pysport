@@ -507,6 +507,11 @@ def menu_list():
                             "tabs": [0, 1, 2, 3, 4],
                             "action": "OnlineSendAction",
                         },
+                        {
+                            "title": translate("Send multiday start list and results"),
+                            "tabs": [0, 1, 2, 3, 4],
+                            "action": "OnlineMultidaySendAll",
+                        },
                     ],
                 },
             ],

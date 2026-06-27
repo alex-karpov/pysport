@@ -1,3 +1,5 @@
+from typing import Union
+
 from sportorg.common.otime import OTime
 from sportorg.libs.winorient.wdb import (
     WDB,
@@ -59,6 +61,17 @@ class WinOrientBinary:
     @property
     def is_complete(self):
         return self._is_complete
+
+    @classmethod
+    def get_wdb_status(cls, sportorg_status: Union[ResultStatus, int]) -> int:
+        if isinstance(sportorg_status, int):
+            try:
+                sportorg_status = ResultStatus(sportorg_status)
+            except ValueError:
+                return 0
+        if sportorg_status in cls.status_reverse:
+            return cls.status_reverse[sportorg_status]
+        return 0
 
     def _read_file(self):
         try:
@@ -295,8 +308,7 @@ class WinOrientBinary:
                 new_finish.time = time_to_int(result.get_finish_time())
                 new_finish.number = man.bib
 
-                if result.status in self.status_reverse:
-                    new_person.status = self.status_reverse[result.status]
+                new_person.status = self.get_wdb_status(result.status)
 
                 wdb_object.fin.append(new_finish)
 

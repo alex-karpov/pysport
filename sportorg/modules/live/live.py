@@ -7,7 +7,7 @@ from threading import Event, Thread
 
 import aiohttp
 
-from sportorg.models.memory import race
+from sportorg.models.memory import Result, race
 from sportorg.modules.live import orgeo
 
 LIVE_TIMEOUT = int(os.getenv("SPORTORG_LIVE_TIMEOUT", "10"))
@@ -83,6 +83,7 @@ class LiveClient:
 
         if not isinstance(data, list):
             data = [data]
+        is_results = any([isinstance(obj, Result) for obj in data])
         items = []
         for item in data:
             if isinstance(item, dict):
@@ -93,19 +94,20 @@ class LiveClient:
         urls = self.get_urls()
         race_data = race().to_dict()
         for url in urls:
-            if race().get_setting("live_results_enabled", False):
-                func = partial(orgeo.create, url, items, race_data, logging.root)
-                self._thread.send(func)
+            if race().get_setting("live_enabled", False):
+                if not is_results or race().get_setting("live_results_enabled", False):
+                    func = partial(orgeo.create, url, items, race_data, logging.root)
+                    self._thread.send(func)
 
-            if race().get_setting("live_cp_enabled", False):
-                func = partial(
-                    orgeo.create_online_cp,
-                    url,
-                    items,
-                    race_data,
-                    logging.root,
-                )
-                self._thread.send(func)
+                if race().get_setting("live_cp_enabled", False):
+                    func = partial(
+                        orgeo.create_online_cp,
+                        url,
+                        items,
+                        race_data,
+                        logging.root,
+                    )
+                    self._thread.send(func)
 
     def delete(self, data):
         if not self.is_enabled():
