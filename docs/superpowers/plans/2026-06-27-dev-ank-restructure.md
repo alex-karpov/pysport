@@ -147,13 +147,12 @@ Build in a separate directory so `openspec-base` (and every claude/openspec file
 git worktree add C:/Users/ank/Documents/Prog/SportOrg/pysport-ankdev -b ank/dev master
 cd C:/Users/ank/Documents/Prog/SportOrg/pysport-ankdev
 ```
-Run all remaining tasks from this worktree directory. Then one-time environment setup (fresh `.venv` + Rust ext — `uv sync` uses hatchling and does NOT build the crate):
+Run all remaining tasks from this worktree directory. Then one-time environment setup (fresh `.venv`, deps are uv-cached):
 ```bash
 uv sync --frozen
-uv run poe develop-rust          # maturin develop: compiles crates/sportorg-core (otime) into the venv
 uv run python -c "from sportorg.common.otime import OTime; print(OTime(1))"
 ```
-Expected: prints an OTime value (Rust ext importable). Requires the Rust toolchain (pinned by `rust-toolchain.toml`); build takes a few minutes the first time only.
+Expected: prints an OTime value. The Rust `sportorg_core` ext is NOT required — `otime.py` falls back to `PythonOTime` (`except ModuleNotFoundError`), no test references it, and master itself runs on the fallback. Skip `poe develop-rust`.
 
 - [ ] **Step 3: Capture the dev-ank baseline (calibrates "green")**
 
