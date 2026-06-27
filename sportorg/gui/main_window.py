@@ -57,6 +57,7 @@ from sportorg.models.result.photo_controls import (
 from sportorg.models.result.result_tools import recalculate_results
 from sportorg.models.result.split_calculation import GroupSplits
 from sportorg.modules.backup.file import File
+from sportorg.modules.huichang.huichang import HuichangClient
 from sportorg.modules.live.live import live_client
 from sportorg.modules.plugins import plugin_client
 from sportorg.modules.printing.model import (
@@ -72,7 +73,6 @@ from sportorg.modules.sportident.result_generation import ResultSportidentGenera
 from sportorg.modules.sportident.sireader import SIReaderClient
 from sportorg.modules.sportiduino.sportiduino import SportiduinoClient
 from sportorg.modules.srpid.srpid import SrpidClient
-from sportorg.modules.huichang.huichang import HuichangClient
 from sportorg.modules.teamwork.packet_header import ObjectTypes, Operations
 from sportorg.modules.teamwork.teamwork import (
     Teamwork,

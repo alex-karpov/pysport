@@ -239,7 +239,6 @@ class SportorgPrinter:
                     + split.speed
                     + " "
                 )
-
                 if settings.is_feature_enabled(
                     settings.FEATURE_ROGAINE_PHOTO_CONTROLS
                 ) and is_photo_mark(split, result.get_start_time()):
