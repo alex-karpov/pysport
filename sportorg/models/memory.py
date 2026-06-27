@@ -42,6 +42,12 @@ class SystemType(Enum):
         return self.__str__()
 
 
+class PrintableValue(object):
+    def __init__(self, value, printable_name):
+        self.value = value
+        self.printable_name = printable_name
+
+
 class _TitleType(Enum):
     def __str__(self) -> str:
         return self._name_
@@ -1116,7 +1122,7 @@ class ResultSportident(Result):
                 splits.append(split)
         return splits
 
-    def check(self, course=None):
+    def check(self, course: Course = None):
         obj = race()
         if not course:
             return super().check()
@@ -2132,7 +2138,7 @@ class Race:
         # usual connection via group
         if not ret and person.group:
             if person.group.is_any_course:
-                for course in self.courses:
+                for course in [c for c in self.courses if person.group.name in c.name]:
                     if result.check(course):
                         return course
             else:

@@ -12,6 +12,7 @@ try:
         QFormLayout,
         QHBoxLayout,
         QLabel,
+        QLineEdit,
         QMessageBox,
         QPushButton,
         QTabWidget,
@@ -28,6 +29,7 @@ except ModuleNotFoundError:
         QFormLayout,
         QHBoxLayout,
         QLabel,
+        QLineEdit,
         QMessageBox,
         QPushButton,
         QTabWidget,
@@ -37,7 +39,7 @@ except ModuleNotFoundError:
 from sportorg import config, settings
 from sportorg.common.audio import get_sounds
 from sportorg.common.template import get_templates
-from sportorg.gui.dialogs.file_dialog import get_existing_directory
+from sportorg.gui.dialogs.file_dialog import get_existing_directory, get_open_file_name
 from sportorg.gui import theme
 from sportorg.gui.global_access import GlobalAccess
 from sportorg.gui.utils.custom_controls import messageBoxQuestion
@@ -238,15 +240,50 @@ class FunctionsTab(Tab):
             (settings.FEATURE_HUICHANG, "Huichang"),
             (settings.FEATURE_WINORIENT, "Winorient"),
             (settings.FEATURE_TELEGRAM, "Telegram"),
+            (settings.FEATURE_ROGAINE_PHOTO_CONTROLS, "Rogaine photo controls"),
         ):
             checkbox = QCheckBox(translate(title))
             checkbox.setChecked(settings.is_feature_enabled(feature))
             self.feature_checkboxes[feature] = checkbox
             self.layout.addRow(checkbox)
 
+        self.item_photo_controls_path = QLineEdit()
+        self.item_photo_controls_path.setText(
+            settings.SETTINGS.rogaine_photo_controls_path
+        )
+        self.item_photo_controls_browse = QPushButton(translate("Browse"))
+
+        def select_photo_controls_path():
+            file_name = get_open_file_name(
+                translate("Photo controls CSV"), "CSV (*.csv)"
+            )
+            if file_name:
+                self.item_photo_controls_path.setText(file_name)
+
+        self.item_photo_controls_browse.clicked.connect(select_photo_controls_path)
+        photo_controls_layout = QHBoxLayout()
+        photo_controls_layout.addWidget(self.item_photo_controls_path)
+        photo_controls_layout.addWidget(self.item_photo_controls_browse)
+        self.label_photo_controls_path = QLabel(translate("Photo controls CSV"))
+        self.layout.addRow(self.label_photo_controls_path, photo_controls_layout)
+
+        def toggle_photo_controls_path(enabled):
+            self.label_photo_controls_path.setEnabled(enabled)
+            self.item_photo_controls_path.setEnabled(enabled)
+            self.item_photo_controls_browse.setEnabled(enabled)
+
+        rogaine_checkbox = self.feature_checkboxes[
+            settings.FEATURE_ROGAINE_PHOTO_CONTROLS
+        ]
+        toggle_photo_controls_path(rogaine_checkbox.isChecked())
+        rogaine_checkbox.toggled.connect(toggle_photo_controls_path)
+
     def save(self):
         for feature, checkbox in self.feature_checkboxes.items():
             settings.set_feature_enabled(feature, checkbox.isChecked())
+        settings.SETTINGS.rogaine_photo_controls_path = (
+            self.item_photo_controls_path.text()
+        )
 
 
 class MultidayTab(Tab):

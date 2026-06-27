@@ -80,6 +80,8 @@ class Settings:
     source_ranking_ardf_score_path: str = config.configs_dir("ranking_ardf.txt")
     source_rent_cards_path: str = config.data_dir("rent_cards.txt")
 
+    NOVOSIVIRSK_ROGAINE_PAIRS: Dict[str, Any] = field(default_factory=dict)
+
 
 SETTINGS = Settings()
 
