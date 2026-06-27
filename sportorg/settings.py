@@ -88,6 +88,8 @@ class Settings:
     source_ranking_ardf_score_path: str = ""
     source_rent_cards_path: str = ""
 
+    NOVOSIVIRSK_ROGAINE_PAIRS: Dict[str, Any] = field(default_factory=dict)
+
 
 SETTINGS = Settings()
 
