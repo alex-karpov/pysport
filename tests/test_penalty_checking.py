@@ -13,6 +13,8 @@ Settings covered in this suite:
 from itertools import zip_longest
 from typing import List, Tuple, Union
 
+import pytest
+
 from sportorg.models.memory import (
     Course,
     CourseControl,
@@ -179,6 +181,20 @@ def test_penalty_calculation_function():
     assert dsq(course=['*', '*', '*'],
                splits=[31, 31, 31, 31], penalty=2)
     # fmt: on
+
+
+def test_non_obvious_behavior():
+    """Неочевидное поведение при проверке дистанции. Не всегда это некорректная работа
+    алгоритма, иногда может возникать из-за недочётов при составлении курсов.
+    """
+    create_race()
+    race().set_setting("marked_route_mode", "laps")
+    race().set_setting("marked_route_dont_dsq", True)
+
+    if expected_status == "ok":
+        assert ok(controls, splits, penalty=expected_penalty)
+    else:
+        assert dsq(controls, splits, penalty=expected_penalty)
 
 
 def test_non_obvious_behavior():
