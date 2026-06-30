@@ -3,6 +3,7 @@ from typing import List
 
 from sportorg.models.memory import (
     Course,
+    CourseControl,
     Group,
     Organization,
     Person,
@@ -31,6 +32,10 @@ def r() -> Race:
 
     c1, c2 = Course(), Course()
     c1.name, c2.name = "C1", "C2"
+    # Add a control to c2 to make it distinct from c1 (since Course.__eq__ checks controls)
+    c2_control = CourseControl()
+    c2_control.code = "31"
+    c2.controls.append(c2_control)
     obj.courses.extend([c1, c2])
 
     g1, g2, g3 = Group(), Group(), Group()
@@ -115,3 +120,127 @@ def test_build_partial_group_without_course_excluded_from_courses(r: Race) -> No
     result = r._build_partial(persons_w21)
     assert result is not None
     assert result["courses"] == []
+
+
+# --- partial_for_persons ---
+
+def test_partial_for_persons_empty_returns_none(r: Race) -> None:
+    assert r.partial_for_persons([]) is None
+
+
+def test_partial_for_persons_reorders_by_model(r: Race) -> None:
+    # Reverse the persons list — output must follow self.persons order
+    reversed_persons = list(reversed(r.persons))
+    result = r.partial_for_persons(reversed_persons)
+    assert result is not None
+    expected = [str(p.id) for p in r.persons]
+    actual = [p["id"] for p in result["persons"]]
+    assert actual == expected
+
+
+def test_partial_for_persons_subset(r: Race) -> None:
+    # Supply only p0 and p2 — output persons must be exactly those two
+    selected = [r.persons[0], r.persons[2]]
+    result = r.partial_for_persons(selected)
+    assert result is not None
+    assert len(result["persons"]) == 2
+
+
+# --- partial_for_groups ---
+
+def test_partial_for_groups_empty_returns_none(r: Race) -> None:
+    assert r.partial_for_groups([]) is None
+
+
+def test_partial_for_groups_filters_persons(r: Race) -> None:
+    g_m21 = r.groups[0]  # M21 — has p0, p1
+    result = r.partial_for_groups([g_m21])
+    assert result is not None
+    assert len(result["persons"]) == 2
+    assert len(result["groups"]) == 1
+    assert result["groups"][0]["name"] == "M21"
+
+
+def test_partial_for_groups_order_follows_model(r: Race) -> None:
+    # Select W21 (index 2) and M21 (index 0) in that order
+    g_w21, g_m21 = r.groups[2], r.groups[0]
+    result = r.partial_for_groups([g_w21, g_m21])
+    assert result is not None
+    group_names = [g["name"] for g in result["groups"]]
+    assert group_names == ["M21", "W21"]  # self.groups order
+
+
+def test_partial_for_groups_excludes_other_persons(r: Race) -> None:
+    g_m21 = r.groups[0]
+    result = r.partial_for_groups([g_m21])
+    assert result is not None
+    person_ids = {p["id"] for p in result["persons"]}
+    expected_ids = {str(p.id) for p in r.persons if p.group == g_m21}
+    assert person_ids == expected_ids
+
+
+# --- partial_for_courses ---
+
+def test_partial_for_courses_empty_returns_none(r: Race) -> None:
+    assert r.partial_for_courses([]) is None
+
+
+def test_partial_for_courses_filters_by_course(r: Race) -> None:
+    # C1 → M21 only
+    result = r.partial_for_courses([r.courses[0]])
+    assert result is not None
+    group_names = [g["name"] for g in result["groups"]]
+    assert group_names == ["M21"]
+
+
+def test_partial_for_courses_multi(r: Race) -> None:
+    # Both courses → M21 and M35 (W21 has no course, excluded)
+    result = r.partial_for_courses(r.courses)
+    assert result is not None
+    group_names = [g["name"] for g in result["groups"]]
+    assert "M21" in group_names
+    assert "M35" in group_names
+    assert "W21" not in group_names
+
+
+# --- partial_for_orgs ---
+
+def test_partial_for_orgs_empty_returns_none(r: Race) -> None:
+    assert r.partial_for_orgs([]) is None
+
+
+def test_partial_for_orgs_filters_persons(r: Race) -> None:
+    o2 = r.organizations[1]  # Org2 — only p2
+    result = r.partial_for_orgs([o2])
+    assert result is not None
+    assert len(result["persons"]) == 1
+
+
+def test_partial_for_orgs_multi(r: Race) -> None:
+    # Both orgs → all 4 persons
+    result = r.partial_for_orgs(r.organizations)
+    assert result is not None
+    assert len(result["persons"]) == len(r.persons)
+
+
+# --- partial_for_results ---
+
+def test_partial_for_results_empty_returns_none(r: Race) -> None:
+    assert r.partial_for_results([]) is None
+
+
+def test_partial_for_results_persons_in_model_order(r: Race) -> None:
+    # Results in reversed order — output persons must follow self.persons order
+    reversed_results = list(reversed(r.results))
+    result = r.partial_for_results(reversed_results)
+    assert result is not None
+    expected = [str(p.id) for p in r.persons]
+    actual = [p["id"] for p in result["persons"]]
+    assert actual == expected
+
+
+def test_partial_for_results_subset(r: Race) -> None:
+    # Pass only first result — output has exactly 1 person
+    result = r.partial_for_results([r.results[0]])
+    assert result is not None
+    assert len(result["persons"]) == 1

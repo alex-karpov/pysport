@@ -1759,6 +1759,41 @@ class Race:
             "persons": [item.to_dict() for item in persons],
         }
 
+    def partial_for_persons(
+        self, persons: List[Person]
+    ) -> Optional[Dict[str, Any]]:
+        persons_set = set(persons)
+        ordered = [p for p in self.persons if p in persons_set]
+        return self._build_partial(ordered)
+
+    def partial_for_groups(
+        self, groups: List[Group]
+    ) -> Optional[Dict[str, Any]]:
+        groups_set = set(groups)
+        ordered = [p for p in self.persons if p.group in groups_set]
+        return self._build_partial(ordered)
+
+    def partial_for_courses(
+        self, courses: List[Course]
+    ) -> Optional[Dict[str, Any]]:
+        groups_set = {g for g in self.groups if g.course and g.course in courses}
+        ordered = [p for p in self.persons if p.group in groups_set]
+        return self._build_partial(ordered)
+
+    def partial_for_orgs(
+        self, orgs: List[Organization]
+    ) -> Optional[Dict[str, Any]]:
+        orgs_set = set(orgs)
+        ordered = [p for p in self.persons if p.organization in orgs_set]
+        return self._build_partial(ordered)
+
+    def partial_for_results(
+        self, results: List[Result]
+    ) -> Optional[Dict[str, Any]]:
+        result_persons = {r.person for r in results if r.person}
+        ordered = [p for p in self.persons if p in result_persons]
+        return self._build_partial(ordered)
+
     def to_dict_partial(
         self,
         person_list=None,
