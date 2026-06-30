@@ -1773,38 +1773,22 @@ class Race:
                     person_list.append(result.person)
 
         if person_list and len(person_list) > 0:
-            # person list to filter specified
-            return_groups = set()
-            return_orgs = set()
             return_results = list()
-            return_courses = list()
+            person_set = set(person_list)
+            person_groups = set()
+            person_orgs = set()
             for person in person_list:
                 if person.group:
-                    return_groups.add(person.group)
+                    person_groups.add(person.group)
                 if person.organization:
-                    return_orgs.add(person.organization)
-            for group in return_groups:
-                if group.course and group.course not in return_courses:
-                    return_courses.append(group.course)
+                    person_orgs.add(person.organization)
+            # Preserve self.groups / self.courses / self.organizations order
+            return_groups = [g for g in self.groups if g in person_groups]
+            group_courses = {g.course for g in return_groups if g.course}
+            return_courses = [c for c in self.courses if c in group_courses]
+            return_orgs = [o for o in self.organizations if o in person_orgs]
             for result in self.results:
-                if result.person in person_list:
-                    return_results.append(result)
-
-            # person list to filter specified
-            return_groups = set()
-            return_orgs = set()
-            return_results = list()
-            return_courses = list()
-            for person in person_list:
-                if person.group:
-                    return_groups.add(person.group)
-                if person.organization:
-                    return_orgs.add(person.organization)
-            for group in return_groups:
-                if group.course and group.course not in return_courses:
-                    return_courses.append(group.course)
-            for result in self.results:
-                if result.person in person_list:
+                if result.person in person_set:
                     return_results.append(result)
 
             return {
