@@ -1734,6 +1734,31 @@ class Race:
             "persons": [item.to_dict() for item in self.persons],
         }
 
+    def _build_partial(
+        self, persons: List[Person]
+    ) -> Optional[Dict[str, Any]]:
+        if not persons:
+            return None
+        person_set = set(persons)
+        person_groups = {p.group for p in persons if p.group}
+        person_orgs = {p.organization for p in persons if p.organization}
+        return_groups = [g for g in self.groups if g in person_groups]
+        group_courses = [g.course for g in return_groups if g.course]
+        return_courses = [c for c in self.courses if c in group_courses]
+        return_orgs = [o for o in self.organizations if o in person_orgs]
+        return_results = [r for r in self.results if r.person in person_set]
+        return {
+            "object": self.__class__.__name__,
+            "id": str(self.id),
+            "data": self.data.to_dict(),
+            "settings": self.settings.copy(),
+            "organizations": [item.to_dict() for item in return_orgs],
+            "courses": [item.to_dict() for item in return_courses],
+            "groups": [item.to_dict() for item in return_groups],
+            "results": [item.to_dict() for item in return_results],
+            "persons": [item.to_dict() for item in persons],
+        }
+
     def to_dict_partial(
         self,
         person_list=None,
