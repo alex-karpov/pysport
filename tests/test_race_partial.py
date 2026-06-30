@@ -64,6 +64,7 @@ def r() -> Race:
 
 # --- _build_partial ---
 
+
 def test_build_partial_empty_returns_none(r: Race) -> None:
     assert r._build_partial([]) is None
 
@@ -98,11 +99,15 @@ def test_build_partial_orgs_in_model_order(r: Race) -> None:
 
 
 def test_build_partial_results_filtered(r: Race) -> None:
-    # Only p0 and p1 (M21) — expect 2 results
+    # Only p0 and p1 (M21) — results must be exactly theirs, in self.results order
     persons_m21 = [p for p in r.persons if p.group and p.group.name == "M21"]
     result = r._build_partial(persons_m21)
     assert result is not None
-    assert len(result["results"]) == len(persons_m21)
+    actual_person_ids = [res["person_id"] for res in result["results"]]
+    expected_person_ids = [
+        str(res.person.id) for res in r.results if res.person in persons_m21
+    ]
+    assert actual_person_ids == expected_person_ids
 
 
 def test_build_partial_excludes_other_groups(r: Race) -> None:
@@ -123,6 +128,7 @@ def test_build_partial_group_without_course_excluded_from_courses(r: Race) -> No
 
 
 # --- partial_for_persons ---
+
 
 def test_partial_for_persons_empty_returns_none(r: Race) -> None:
     assert r.partial_for_persons([]) is None
@@ -147,6 +153,7 @@ def test_partial_for_persons_subset(r: Race) -> None:
 
 
 # --- partial_for_groups ---
+
 
 def test_partial_for_groups_empty_returns_none(r: Race) -> None:
     assert r.partial_for_groups([]) is None
@@ -181,6 +188,7 @@ def test_partial_for_groups_excludes_other_persons(r: Race) -> None:
 
 # --- partial_for_courses ---
 
+
 def test_partial_for_courses_empty_returns_none(r: Race) -> None:
     assert r.partial_for_courses([]) is None
 
@@ -205,6 +213,7 @@ def test_partial_for_courses_multi(r: Race) -> None:
 
 # --- partial_for_orgs ---
 
+
 def test_partial_for_orgs_empty_returns_none(r: Race) -> None:
     assert r.partial_for_orgs([]) is None
 
@@ -217,13 +226,16 @@ def test_partial_for_orgs_filters_persons(r: Race) -> None:
 
 
 def test_partial_for_orgs_multi(r: Race) -> None:
-    # Both orgs → all 4 persons
+    # Both orgs → all 4 persons, in self.persons order
     result = r.partial_for_orgs(r.organizations)
     assert result is not None
-    assert len(result["persons"]) == len(r.persons)
+    actual_ids = [p["id"] for p in result["persons"]]
+    expected_ids = [str(p.id) for p in r.persons]
+    assert actual_ids == expected_ids
 
 
 # --- partial_for_results ---
+
 
 def test_partial_for_results_empty_returns_none(r: Race) -> None:
     assert r.partial_for_results([]) is None
