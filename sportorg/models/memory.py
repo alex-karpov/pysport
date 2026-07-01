@@ -1743,9 +1743,11 @@ class Race:
         person_orgs = {p.organization for p in persons if p.organization}
 
         return_groups = [g for g in self.groups if g in person_groups]
-        group_courses = [g.course for g in return_groups if g.course]
+        # Course has no __hash__ (its __eq__ compares controls), so containment
+        # is keyed on the immutable .id instead of putting Course in a set/list scan.
+        group_course_ids = {g.course.id for g in return_groups if g.course}
 
-        return_courses = [c for c in self.courses if c in group_courses]
+        return_courses = [c for c in self.courses if c.id in group_course_ids]
         return_orgs = [o for o in self.organizations if o in person_orgs]
         return_results = [r for r in self.results if r.person in person_set]
 
@@ -1772,7 +1774,8 @@ class Race:
         return self._build_partial(ordered)
 
     def partial_for_courses(self, courses: List[Course]) -> Optional[Dict[str, Any]]:
-        groups_set = {g for g in self.groups if g.course and g.course in courses}
+        course_ids = {c.id for c in courses}
+        groups_set = {g for g in self.groups if g.course and g.course.id in course_ids}
         ordered = [p for p in self.persons if p.group in groups_set]
         return self._build_partial(ordered)
 

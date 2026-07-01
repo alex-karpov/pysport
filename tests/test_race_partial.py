@@ -128,6 +128,20 @@ def test_build_partial_group_without_course_excluded_from_courses(r: Race) -> No
     assert result["courses"] == []
 
 
+def test_build_partial_courses_matched_by_id_not_structure(r: Race) -> None:
+    # A decoy course with the same (empty) controls as C1 is structurally equal
+    # to it (Course.__eq__ compares controls), but is a different object that no
+    # group references. It must be excluded from the result.
+    decoy = Course()
+    decoy.name = "C1-decoy"
+    r.courses.append(decoy)
+    persons_m21 = [p for p in r.persons if p.group and p.group.name == "M21"]
+    result = r._build_partial(persons_m21)
+    assert result is not None
+    course_names = [c["name"] for c in result["courses"]]
+    assert course_names == ["C1"]
+
+
 # --- partial_for_persons ---
 
 
@@ -210,6 +224,15 @@ def test_partial_for_courses_multi(r: Race) -> None:
     assert "M21" in group_names
     assert "W21" in group_names
     assert "M35" not in group_names
+
+
+def test_partial_for_courses_matches_by_id_not_structure(r: Race) -> None:
+    # Structurally identical to C1 (both have empty controls) but a different
+    # object that no group actually references — must not match C1.
+    decoy = Course()
+    decoy.name = "C1-decoy"
+    result = r.partial_for_courses([decoy])
+    assert result is None
 
 
 # --- partial_for_orgs ---
