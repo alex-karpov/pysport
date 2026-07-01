@@ -1734,19 +1734,21 @@ class Race:
             "persons": [item.to_dict() for item in self.persons],
         }
 
-    def _build_partial(
-        self, persons: List[Person]
-    ) -> Optional[Dict[str, Any]]:
+    def _build_partial(self, persons: List[Person]) -> Optional[Dict[str, Any]]:
         if not persons:
             return None
+
         person_set = set(persons)
         person_groups = {p.group for p in persons if p.group}
         person_orgs = {p.organization for p in persons if p.organization}
+
         return_groups = [g for g in self.groups if g in person_groups]
         group_courses = [g.course for g in return_groups if g.course]
+
         return_courses = [c for c in self.courses if c in group_courses]
         return_orgs = [o for o in self.organizations if o in person_orgs]
         return_results = [r for r in self.results if r.person in person_set]
+
         return {
             "object": self.__class__.__name__,
             "id": str(self.id),
@@ -1759,37 +1761,27 @@ class Race:
             "persons": [item.to_dict() for item in persons],
         }
 
-    def partial_for_persons(
-        self, persons: List[Person]
-    ) -> Optional[Dict[str, Any]]:
+    def partial_for_persons(self, persons: List[Person]) -> Optional[Dict[str, Any]]:
         persons_set = set(persons)
         ordered = [p for p in self.persons if p in persons_set]
         return self._build_partial(ordered)
 
-    def partial_for_groups(
-        self, groups: List[Group]
-    ) -> Optional[Dict[str, Any]]:
+    def partial_for_groups(self, groups: List[Group]) -> Optional[Dict[str, Any]]:
         groups_set = set(groups)
         ordered = [p for p in self.persons if p.group in groups_set]
         return self._build_partial(ordered)
 
-    def partial_for_courses(
-        self, courses: List[Course]
-    ) -> Optional[Dict[str, Any]]:
+    def partial_for_courses(self, courses: List[Course]) -> Optional[Dict[str, Any]]:
         groups_set = {g for g in self.groups if g.course and g.course in courses}
         ordered = [p for p in self.persons if p.group in groups_set]
         return self._build_partial(ordered)
 
-    def partial_for_orgs(
-        self, orgs: List[Organization]
-    ) -> Optional[Dict[str, Any]]:
+    def partial_for_orgs(self, orgs: List[Organization]) -> Optional[Dict[str, Any]]:
         orgs_set = set(orgs)
         ordered = [p for p in self.persons if p.organization in orgs_set]
         return self._build_partial(ordered)
 
-    def partial_for_results(
-        self, results: List[Result]
-    ) -> Optional[Dict[str, Any]]:
+    def partial_for_results(self, results: List[Result]) -> Optional[Dict[str, Any]]:
         result_persons = {r.person for r in results if r.person}
         ordered = [p for p in self.persons if p in result_persons]
         return self._build_partial(ordered)
