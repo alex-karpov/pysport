@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Выписки по командам — взнос</title>
+<style>
+/* [base-css] */
+body { -webkit-print-color-adjust: exact; print-color-adjust: exact; margin: 0; }
+
+table.extract {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-family: Arial, "DejaVu Sans", sans-serif;
+  font-size: 10pt;
+}
+table.extract th, table.extract td {
+  border: 0.5px dashed #999;
+  padding: 0 4px;
+  height: 6mm;               /* fixed row height (measured ref) — keep in sync with ROW_H in JS */
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: bottom;    /* spec: cells bottom-aligned */
+}
+table.extract th:first-child, table.extract td:first-child { border-left: 1px solid #000; }
+table.extract th:last-child,  table.extract td:last-child  { border-right: 1px solid #000; }
+
+table.extract thead th { font-size: 8pt; border: 1px solid #000; background: #ddd; vertical-align: middle; }
+
+.a-left   { text-align: left; }
+.a-center { text-align: center; }
+.a-right  { text-align: right; }
+
+.c-index { font-size: 8pt; }                      /* spec: № is 8pt; Комментарий stays normal 10pt */
+table.extract td.c-fee { font-variant-numeric: tabular-nums; }
+td.fee-unknown { background: #ffd; }   /* unknown group — взнос не посчитан */
+
+td.chip-dup { background: #cfcfcf; font-style: italic; }
+
+/* Summary block: an independent-grid table hosted in a full-width cell of the main table. */
+table.extract td.summary-host { border: none; padding: 0; vertical-align: top; }
+table.team-summary {
+  width: auto;                 /* compact: shrink to content, not full page width */
+  table-layout: auto;          /* size each column to its content */
+  border-collapse: collapse;
+  font-family: Arial, "DejaVu Sans", sans-serif;
+  font-size: 10pt;
+  margin-left: auto;           /* push the table to the right... */
+  margin-right: 60mm;          /* ...leaving a 6 cm indent from the right edge */
+}
+table.team-summary td {
+  border: 1px solid #000;
+  height: 6mm;
+  padding: 0 2mm;
+  white-space: nowrap;
+  overflow: hidden;
+  vertical-align: middle;
+}
+table.team-summary tr.sum-head td  { font-weight: bold; background: #eee; }
+table.team-summary tr.sum-warn td  { color: #900; }
+table.team-summary tr.sum-total td { font-weight: bold; }
+
+/* [page-css] */
+@page { size: A4 portrait; margin: 5mm; }
+
+.page {
+  box-sizing: border-box;
+  width: 200mm;          /* 210 − 2×5 */
+  height: 287mm;         /* 297 − 2×5 */
+  overflow: hidden;
+  page-break-after: always;
+  display: flex;
+  flex-direction: column;
+}
+.page:last-child { page-break-after: auto; }
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  font-family: Arial, "DejaVu Sans", sans-serif;
+  font-size: 10pt;
+  font-weight: bold;
+  height: 7mm;           /* must match HEADER_H */
+}
+
+.page table.extract { flex: 1 1 auto; height: 100%; }   /* fill to bottom: stretch rows to the page edge */
+
+@media screen {
+  .page { border: 1px solid #ccc; margin: 4mm auto; background: #fff; }
+}
+@media print {
+  .selftest-banner { display: none !important; }
+}
+</style>
+</head>
+<body>
+<div id="report"></div>
+{% raw %}
+<script>
+var race = {% endraw %}{{ race | tojson }}{% raw %};
+
+// ======================= [fee-config] ПРАВЬ ЗДЕСЬ =======================
+var EVENT_DAYS = 3;            // всего дней соревнований (константа)
+
+// Аренда чипа за день участия. Два тарифа: обычный и «бк» (маркер в комментарии).
+var CHIP_PER_DAY    = 100;     // обычный чип
+var CHIP_PER_DAY_BK = 150;     // чип «бк» (комментарий содержит CHIP_BK_MARK)
+var CHIP_BK_MARK    = 'бк';    // маркер «бк» в комментарии (поиск без учёта регистра)
+
+// Тарифы по категориям. У каждой: name (метка сводки), groups (ТОЧНЫЙ белый список
+// имён групп — должны совпадать с race.groups) и поле тарифа, имя которого задаёт смысл:
+//   tariffTotal                      -> за все дни (фиксированный)
+//   tariffPerDay                     -> за день участия
+//   tariffPerDay + tariffPerAbsentDay-> день участия + день неучастия
+var TARIFF = {
+  'ЧСФО':   { name: 'ЧСФО', tariffTotal: 1650, groups: ['МА', 'ЖА'] },
+  'ПСФО':   { name: 'ПСФО', tariffTotal: 1200, groups: ['М18','Ж18','М16','Ж16','М14','Ж14'] },
+  'РС-200': { name: 'РС',   tariffPerDay: 200,  groups: ['М35','Ж35','М45','Ж45','М55','Ж55','М65+','Ж65+'] },
+  'РС-150': { name: 'РС',   tariffPerDay: 150,  groups: ['М12','Ж12','М10','Ж10'] }
+};
+// =======================================================================
+
+// [helpers]
+var Qualification = {'':'',0:'',3:'IIIю',2:'IIю',1:'Iю',6:'III',5:'II',4:'I',7:'КМС',8:'МС',9:'МСМК'};
+
+function getById(list, id) {
+  if (id) { for (var i = 0; i < list.length; i++) { if (list[i].id === id) return list[i]; } }
+  return null;
+}
+
+function racePreparation(r) {
+  for (var i = 0; i < r.persons.length; i++) {
+    var p = r.persons[i];
+    p.organization = getById(r.organizations, p.organization_id);
+    p.group = getById(r.groups, p.group_id);
+  }
+  return r;
+}
+
+function buildChipCounts(persons) {
+  var c = {};
+  for (var i = 0; i < persons.length; i++) {
+    var n = persons[i].card_number | 0;
+    if (n > 0) c[n] = (c[n] || 0) + 1;
+  }
+  return c;
+}
+
+// [transforms]
+function formatZabeg(sg) {
+  sg = sg | 0;
+  if (sg >= 1 && sg <= 9) return String(sg);
+  if (sg === 11) return 'роз';
+  if (sg === 13) return 'кр';
+  if (sg >= 91 && sg <= 99) return '×';
+  return '';
+}
+
+// [fee]
+// Days from the "С:" code in the comment. Digits = participation days;
+// '?','-','x' or any non-digit = non-participation. No code -> all EVENT_DAYS.
+function parseDays(comment, eventDays) {
+  var m = /[СC]:(\S+)/.exec(comment || '');
+  if (!m) return { in: eventDays, out: 0 };
+  var tok = m[1], din = 0;
+  for (var i = 0; i < tok.length; i++) if (tok[i] >= '0' && tok[i] <= '9') din++;
+  if (din > eventDays) din = eventDays;
+  return { in: din, out: eventDays - din };
+}
+
+function hasBk(comment) {
+  return String(comment || '').toLowerCase().indexOf(CHIP_BK_MARK.toLowerCase()) >= 0;
+}
+
+// group name -> tariff entry (reverse index of TARIFF.groups), memoized.
+var GROUP_INDEX = null;
+function buildGroupIndex() {
+  var idx = {};
+  for (var k in TARIFF) {
+    if (!TARIFF.hasOwnProperty(k)) continue;
+    var e = TARIFF[k];
+    for (var i = 0; i < e.groups.length; i++) idx[e.groups[i]] = e;
+  }
+  return idx;
+}
+function groupIndexOf() {
+  if (!GROUP_INDEX) GROUP_INDEX = buildGroupIndex();
+  return GROUP_INDEX;
+}
+
+// Start fee: branch on which tariff field the entry carries.
+function startFeeFor(entry, daysIn, daysOut) {
+  if (!entry) return 0;                                   // unknown group
+  if (entry.tariffTotal != null) return entry.tariffTotal;
+  if (entry.tariffPerAbsentDay != null)
+    return entry.tariffPerDay * daysIn + entry.tariffPerAbsentDay * daysOut;
+  return entry.tariffPerDay * daysIn;
+}
+
+function chipFeeFor(comment, isRented, daysIn) {
+  if (!isRented) return 0;
+  return (hasBk(comment) ? CHIP_PER_DAY_BK : CHIP_PER_DAY) * daysIn;
+}
+
+function feeForPerson(p, groupIndex, eventDays) {
+  var entry = p.group ? groupIndex[p.group.name] : null;
+  var d = parseDays(p.comment, eventDays);
+  var start = startFeeFor(entry, d.in, d.out);
+  var chip = chipFeeFor(p.comment, p.is_rented_card, d.in);
+  return { entry: entry, daysIn: d.in, daysOut: d.out,
+           start: start, chip: chip, total: start + chip, unknown: !entry };
+}
+
+function formatMoney(n) {
+  n = Math.round(n || 0);
+  var neg = n < 0; if (neg) n = -n;
+  var s = String(n), out = '';
+  for (var i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 === 0) out += ' ';
+    out += s[i];
+  }
+  return (neg ? '-' : '') + out + ' ₽';
+}
+
+// Per-team summary as an independent-grid table (its own column widths, NOT tied to the
+// main table): a header row, one row per non-empty TARIFF category (with 3д/2д/1д participant
+// counts), one row per chip rate (100/150), an optional unknown-groups row, and a bold total.
+// Returns an array of { cells:[{text,align,span?}], cls }; buildSummaryTable renders it.
+function buildTeamSummary(members, groupIndex, eventDays) {
+  var order = [], agg = {};
+  for (var k in TARIFF) {
+    if (!TARIFF.hasOwnProperty(k)) continue;
+    order.push(k);
+    agg[k] = { name: TARIFF[k].name, people: 0, sum: 0, days: {} };
+  }
+  var chipByRate = {}, chipSumByRate = {}, unknownCount = 0, totalSum = 0;
+
+  for (var i = 0; i < members.length; i++) {
+    var p = members[i];
+    var f = feeForPerson(p, groupIndex, eventDays);
+    totalSum += f.total;
+    if (f.entry) {
+      var key = null;
+      for (var o = 0; o < order.length; o++) { if (TARIFF[order[o]] === f.entry) { key = order[o]; break; } }
+      var a = agg[key];
+      a.people++; a.sum += f.start;
+      a.days[f.daysIn] = (a.days[f.daysIn] || 0) + 1;
+    } else {
+      unknownCount++;
+    }
+    if (p.is_rented_card && f.daysIn > 0) {
+      var rate = hasBk(p.comment) ? CHIP_PER_DAY_BK : CHIP_PER_DAY;
+      chipByRate[rate] = (chipByRate[rate] || 0) + 1;
+      chipSumByRate[rate] = (chipSumByRate[rate] || 0) + f.chip;
+    }
+  }
+
+  // The summary's own columns: Категория, Кол-во, <one per day (eventDays..1)>, Сумма.
+  var dayVals = [];
+  for (var d = eventDays; d >= 1; d--) dayVals.push(d);
+
+  var rows = [];
+  function row(cells, cls) { rows.push({ cells: cells, cls: cls || '' }); }
+
+  var head = [{ text: 'Соревн', align: 'left' }, { text: 'Всего', align: 'center' }];
+  for (var h = 0; h < dayVals.length; h++) head.push({ text: dayVals[h] + 'д', align: 'center' });
+  head.push({ text: 'Сумма', align: 'right' });
+  row(head, 'sum-head');
+
+  // One row per non-empty category / chip-rate. days = {daysIn: count} or null.
+  function dataRow(name, count, days, sum, cls) {
+    var cells = [{ text: name, align: 'left' }, { text: String(count), align: 'center' }];
+    for (var j = 0; j < dayVals.length; j++) {
+      var c = days ? (days[dayVals[j]] || 0) : 0;
+      cells.push({ text: c ? String(c) : '', align: 'center' });
+    }
+    cells.push({ text: sum == null ? '' : formatMoney(sum), align: 'right' });
+    row(cells, cls);
+  }
+
+  for (var oo = 0; oo < order.length; oo++) {
+    var a2 = agg[order[oo]];
+    if (!a2.people) continue;                          // skip empty category rows
+    dataRow(a2.name, a2.people, a2.days, a2.sum, '');
+  }
+  var rates = Object.keys(chipByRate).map(Number).sort(function (a, b) { return a - b; });
+  for (var ri = 0; ri < rates.length; ri++) {
+    var rt = rates[ri];
+    if (!chipByRate[rt]) continue;                     // skip empty chip-rate rows
+    dataRow(rt === CHIP_PER_DAY_BK ? 'Аренда б/к' : 'Аренда', chipByRate[rt], null, chipSumByRate[rt], '');
+  }
+  if (unknownCount) dataRow('Неизвестные группы', unknownCount, null, null, 'sum-warn');
+
+  // total: label spans Соревн + Всего + day columns; the sum sits in the last column.
+  row([{ text: 'Итого', align: 'left', span: 2 + dayVals.length },
+       { text: formatMoney(totalSum), align: 'right' }], 'sum-total');
+  return rows;
+}
+
+// Render the summary rows as their own independent-grid <table> (own colgroup widths).
+function buildSummaryTable(summaryRows) {
+  var table = document.createElement('table');
+  table.className = 'team-summary';
+  // No colgroup: table-layout:auto sizes each column to its content (compact width).
+  var tb = document.createElement('tbody');
+  summaryRows.forEach(function (r) {
+    var tr = document.createElement('tr');
+    tr.className = r.cls || '';
+    r.cells.forEach(function (cell) {
+      var td = document.createElement('td');
+      td.className = 'a-' + (cell.align || 'left');
+      if (cell.span && cell.span > 1) td.colSpan = cell.span;
+      td.textContent = cell.text || '';
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+  table.appendChild(tb);
+  return table;
+}
+
+// [data]
+function fioOf(p) {
+  var parts = [];
+  if (p.surname) parts.push(p.surname);
+  if (p.name) parts.push(p.name);
+  if (p.middle_name) parts.push(p.middle_name);
+  return parts.join(' ');
+}
+
+function fioSortKey(p) {
+  return [(p.surname || ''), (p.name || ''), (p.middle_name || '')].join(' ').toLowerCase();
+}
+
+// Build a flat list of row "slots" for one team:
+// groups in race.groups order, athletes sorted by FIO, numbering restarts per group,
+// one separator slot between groups, ungrouped athletes as a trailing block (empty group).
+// Build the grouped/sorted slot list from an arbitrary member list (one team, or the no-team block).
+function buildSlots(members, r) {
+  var slots = [];
+
+  function pushGroup(groupName, groupId, list) {
+    list.sort(function (a, b) {
+      return fioSortKey(a).localeCompare(fioSortKey(b), 'ru');   // Russian collation (ё, latin/digit)
+    });
+    if (slots.length) slots.push({ type: 'empty', separator: true });
+    for (var i = 0; i < list.length; i++) {
+      slots.push({
+        type: 'data',
+        groupId: groupId || '__none__',
+        groupName: groupName,
+        person: list[i],
+        index: i + 1
+      });
+    }
+  }
+
+  for (var gi = 0; gi < r.groups.length; gi++) {
+    var g = r.groups[gi];
+    var inGroup = members.filter(function (p) { return p.group && p.group.id === g.id; });
+    if (inGroup.length) pushGroup(g.name, g.id, inGroup);
+  }
+
+  var ungrouped = members.filter(function (p) { return !p.group; });
+  if (ungrouped.length) pushGroup('', null, ungrouped);
+
+  return slots;
+}
+
+function buildTeamSlots(team, r) {
+  return buildSlots(r.persons.filter(function (p) {
+    return p.organization && p.organization.id === team.id;
+  }), r);
+}
+
+// [render]
+var COLS = [
+  { key: 'index', title: '№',                     width: '2.4',  align: 'right',  cls: 'c-index' },
+  { key: 'fio',   title: 'Фамилия, имя, отчество', width: '34.3', align: 'left',   cls: 'c-fio' },
+  { key: 'zabeg', title: 'Забег',                  width: '3.9',  align: 'center', cls: 'c-zabeg' },
+  { key: 'birth', title: 'Дата рождения',          width: '10.8', align: 'center', cls: 'c-birth' },
+  { key: 'group', title: 'Группа',                 width: '4.5',  align: 'center', cls: 'c-group' },
+  { key: 'qual',  title: 'Квал',                   width: '4.9',  align: 'center', cls: 'c-qual' },
+  { key: 'chip',  title: 'Чип',                    width: '9.4',  align: 'center', cls: 'c-chip' },
+  { key: 'note',  title: 'Комментарий',            width: '',     align: 'left',   cls: 'c-note' },
+  { key: 'fee',   title: 'Взнос',                  width: '16',   align: 'left',   cls: 'c-fee' }
+];
+
+function cellValues(slot, chipCounts) {
+  if (slot.type !== 'data') return null;
+  var p = slot.person;
+  var card = p.card_number | 0;
+  var f = feeForPerson(p, groupIndexOf(), EVENT_DAYS);
+  return {
+    index: String(slot.index),
+    fio: fioOf(p),
+    zabeg: formatZabeg(p.start_group),
+    birth: p.birthday || '',
+    group: slot.groupName || '',
+    qual: Qualification[p.qual] || '',
+    chip: card > 0 ? String(card) : '',
+    note: p.comment || '',
+    fee: f.chip > 0 ? (formatMoney(f.start) + ' + ' + formatMoney(f.chip)) : formatMoney(f.total),
+    _chipDup: card > 0 && chipCounts[card] > 1,
+    _unknown: f.unknown
+  };
+}
+
+function buildTable(rows, chipCounts) {
+  var table = document.createElement('table');
+  table.className = 'extract';
+
+  var colgroup = document.createElement('colgroup');
+  COLS.forEach(function (c) {
+    var col = document.createElement('col');
+    if (c.width !== '') col.style.width = c.width + '%';
+    colgroup.appendChild(col);
+  });
+  table.appendChild(colgroup);
+
+  var thead = document.createElement('thead');
+  var htr = document.createElement('tr');
+  COLS.forEach(function (c) {
+    var th = document.createElement('th');
+    th.textContent = c.title;
+    th.className = c.cls + ' a-' + c.align;
+    htr.appendChild(th);
+  });
+  thead.appendChild(htr);
+  table.appendChild(thead);
+
+  var tbody = document.createElement('tbody');
+  rows.forEach(function (slot) {
+    if (slot.type === 'summaryblock') {
+      var htr = document.createElement('tr');
+      htr.className = 'row-summaryhost';
+      var htd = document.createElement('td');
+      htd.colSpan = COLS.length;
+      htd.className = 'summary-host';
+      htd.appendChild(buildSummaryTable(slot.summaryRows));
+      htr.appendChild(htd);
+      tbody.appendChild(htr);
+      return;
+    }
+    var tr = document.createElement('tr');
+    tr.className = slot.type === 'data' ? 'row-data' : 'row-empty';
+    var vals = cellValues(slot, chipCounts);
+    COLS.forEach(function (c) {
+      var td = document.createElement('td');
+      td.className = c.cls + ' a-' + c.align;
+      if (vals) {
+        td.textContent = vals[c.key] || '';
+        if (c.key === 'chip' && vals._chipDup) td.className += ' chip-dup';
+        if (c.key === 'group' && vals._unknown) td.className += ' fee-unknown';
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  return table;
+}
+
+// [pagination]
+var PAGE_H = 287, HEADER_H = 7, THEAD_H = 6, ROW_H = 6;   // mm; ROW_H must match CSS row height (6mm measured ref)
+// SAFETY_MM reserves space for inter-row borders (~0.5px × rows) the nominal mm model omits,
+// so the last real row never overflows the page. Lower it for denser pages.
+var SAFETY_MM = 12;
+var ROWS_PER_PAGE = Math.max(1, Math.floor((PAGE_H - HEADER_H - THEAD_H - SAFETY_MM) / ROW_H));
+var KEEP_MIN = 3;   // keep at least this many of a group together on a page split
+
+// If a page break falls inside one group leaving < KEEP_MIN rows on either side,
+// pull the break back to the start of that group's run on this page.
+function applyKeepMin(rows, start, take) {
+  var end = start + take;
+  if (end >= rows.length) return take;
+  var prev = rows[end - 1], next = rows[end];
+  if (!(prev && next && prev.type === 'data' && next.type === 'data' && prev.groupId === next.groupId)) {
+    return take;
+  }
+  var gid = next.groupId, j;
+  var placed = 0;
+  for (j = end - 1; j >= start; j--) { if (rows[j].type === 'data' && rows[j].groupId === gid) placed++; else break; }
+  var rest = 0;
+  for (j = end; j < rows.length; j++) { if (rows[j].type === 'data' && rows[j].groupId === gid) rest++; else break; }
+  if (placed >= KEEP_MIN && rest >= KEEP_MIN) return take;
+  var firstIdx = end - 1;
+  while (firstIdx > start && rows[firstIdx - 1].type === 'data' && rows[firstIdx - 1].groupId === gid) firstIdx--;
+  var newTake = firstIdx - start;
+  return newTake >= 1 ? newTake : take;   // group larger than a page: allow split to guarantee progress
+}
+
+// A slot normally occupies one row; the summary block occupies slot.height rows.
+function slotHeight(slot) { return slot.height || 1; }
+
+// Split a team's slots into page-sized row slices (Variant 1: fixed row height).
+// Height-aware: a multi-row slot (the summary block) is kept whole — it moves to the
+// next page when it does not fit in the space left on the current one.
+function paginate(slots) {
+  var pages = [];
+  var i = 0;
+  while (i < slots.length) {
+    while (i < slots.length && slots[i].separator) i++;   // drop separators at page top
+    if (i >= slots.length) break;
+    var used = 0, j = i;
+    while (j < slots.length && used + slotHeight(slots[j]) <= ROWS_PER_PAGE) { used += slotHeight(slots[j]); j++; }
+    if (j === i) j = i + 1;                                // guarantee progress for an oversized slot
+    var take = applyKeepMin(slots, i, j - i);
+    var slice = slots.slice(i, i + take);
+    while (slice.length && slice[slice.length - 1].separator) slice.pop();   // no trailing separator
+    var h = 0;
+    for (var s = 0; s < slice.length; s++) h += slotHeight(slice[s]);
+    while (h < ROWS_PER_PAGE) { slice.push({ type: 'empty' }); h++; }        // fill to bottom
+    pages.push(slice);
+    i += take;
+  }
+  return pages;
+}
+
+function buildPage(team, rowSlice, chipCounts) {
+  var page = document.createElement('div');
+  page.className = 'page';
+
+  var header = document.createElement('div');
+  header.className = 'page-header';
+  var left = document.createElement('span');
+  left.textContent = team.name || '';
+  var right = document.createElement('span');
+  right.textContent = (race.data && race.data.short_title) || '';
+  header.appendChild(left);
+  header.appendChild(right);
+  page.appendChild(header);
+
+  page.appendChild(buildTable(rowSlice, chipCounts));
+  return page;
+}
+
+// [selftest]
+function runSelfTest() {
+  var NB = ' ', RUB = '₽';
+  var fails = [];
+  function eq(name, got, want) {
+    if (got !== want) fails.push(name + '=' + JSON.stringify(got) + ' want ' + JSON.stringify(want));
+  }
+  function pd(c) { var d = parseDays(c, 3); return d.in + '/' + d.out; }
+
+  // parseDays (EVENT_DAYS assumed 3 here)
+  eq('pd(123)', pd('С:123'), '3/0');
+  eq('pd(1?3)', pd('С:1?3'), '2/1');
+  eq('pd(?23)', pd('С:?23'), '2/1');
+  eq('pd(12x)', pd('С:12x'), '2/1');
+  eq('pd(??3)', pd('С:??3'), '1/2');
+  eq('pd(???)', pd('С:???'), '0/3');
+  eq('pd(tail)', pd('С:1?3 в/к'), '2/1');
+  eq('pd(none)', pd('привет'), '3/0');
+  eq('pd(empty)', pd(''), '3/0');
+
+  // startFeeFor — explicit entries (variant-independent)
+  eq('chsfo flat', startFeeFor({ tariffTotal: 1650 }, 1, 2), 1650);
+  eq('psfo flat',  startFeeFor({ tariffTotal: 1200 }, 3, 0), 1200);
+  eq('rs200x3',    startFeeFor({ tariffPerDay: 200 }, 3, 0), 600);
+  eq('rs150x2',    startFeeFor({ tariffPerDay: 150 }, 2, 1), 300);
+  eq('chsfo daily', startFeeFor({ tariffPerDay: 550, tariffPerAbsentDay: 55 }, 2, 1), 1155);
+  eq('psfo daily',  startFeeFor({ tariffPerDay: 400, tariffPerAbsentDay: 40 }, 1, 2), 480);
+  eq('unknown',    startFeeFor(null, 3, 0), 0);
+
+  // chipFeeFor (CHIP_PER_DAY=100, CHIP_PER_DAY_BK=150)
+  eq('chip off', chipFeeFor('С:123', false, 3), 0);
+  eq('chip 3d',  chipFeeFor('С:123', true, 3), 300);
+  eq('chip bk',  chipFeeFor('С:12x бк', true, 2), 300);
+  eq('chip BK',  chipFeeFor('БК', true, 1), 150);
+
+  // formatMoney
+  eq('money', formatMoney(16500), '16' + NB + '500' + NB + RUB);
+  eq('money0', formatMoney(0), '0' + NB + RUB);
+
+  var banner = document.createElement('div');
+  banner.className = 'selftest-banner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;padding:6px;z-index:9999;font-family:monospace;'
+    + (fails.length ? 'background:#fbb;color:#900;' : 'background:#bfb;color:#060;');
+  banner.textContent = fails.length ? ('SELFTEST FAIL: ' + fails.join(' | ')) : 'SELFTEST OK';
+  document.body.appendChild(banner);
+  if (fails.length) console.error(fails); else console.log('SELFTEST OK');
+}
+
+// [main]
+document.addEventListener('DOMContentLoaded', function () {
+  if (location.search.indexOf('selftest') >= 0) runSelfTest();
+  racePreparation(race);
+  var chipCounts = buildChipCounts(race.persons);
+  var gi = groupIndexOf();
+  var root = document.getElementById('report');
+  root.innerHTML = '';
+
+  function renderBlock(team, members, slots) {
+    if (!slots.length) return;
+    var summaryRows = buildTeamSummary(members, gi, EVENT_DAYS);
+    var all = slots.concat([{ type: 'empty', separator: true }])
+                   .concat([{ type: 'summaryblock', height: summaryRows.length, summaryRows: summaryRows }]);
+    var pages = paginate(all);
+    for (var pi = 0; pi < pages.length; pi++) root.appendChild(buildPage(team, pages[pi], chipCounts));
+  }
+
+  for (var oi = 0; oi < race.organizations.length; oi++) {
+    var team = race.organizations[oi];
+    var members = race.persons.filter(function (p) { return p.organization && p.organization.id === team.id; });
+    if (!members.length) continue;
+    renderBlock(team, members, buildTeamSlots(team, race));
+  }
+
+  // Trailing "no team" block (athletes without an organization).
+  var noTeam = race.persons.filter(function (p) { return !p.organization; });
+  if (noTeam.length) renderBlock({ name: 'Без команды' }, noTeam, buildSlots(noTeam, race));
+});
+</script>
+{% endraw %}
+</body>
+</html>
