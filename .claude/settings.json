@@ -9,8 +9,7 @@
       "Edit(pysport/**)",
       "Bash(openspec new:*)",
       "Bash(openspec status:*)",
-      "Bash(openspec instructions:*)",
-      "Edit(//c/Users/ank/Documents/Prog/SportOrg/worktree/**)"
+      "Bash(openspec instructions:*)"
     ],
     "deny": [
       "Read(.env*)"
