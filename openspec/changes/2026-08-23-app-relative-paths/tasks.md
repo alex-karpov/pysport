@@ -1,89 +1,93 @@
 ## 0. Setup
 
-- [ ] 0.1 Create worktree `C:\Users\ank\Documents\Prog\SportOrg\worktree\pysport-app-paths` on branch `ank/app-relative-paths` based on `master` (`b0391dd1`), **not** on `ank/dev` or `openspec-base`
-- [ ] 0.2 `uv sync --frozen --extra win --extra gui` in the worktree; confirm `uv run poe test` is green before any change
+- [x] 0.1 Create worktree `C:\Users\ank\Documents\Prog\SportOrg\worktree\pysport-app-paths` on branch `ank/app-relative-paths` based on `master` (`b0391dd1`), **not** on `ank/dev` or `openspec-base`
+- [x] 0.2 `uv sync --frozen --extra win --extra gui` in the worktree; confirm `uv run poe test` is green before any change — the worktree venv defaulted to Python 3.14 and failed to build `cx-logging`; recreated on 3.13, baseline 242 passed / 12 skipped
 
 ## 1. `sportorg/paths.py`
 
-- [ ] 1.1 Create `sportorg/paths.py` with no import-time side effects
-- [ ] 1.2 `app_dir(*p)` — `os.path.dirname(sys.executable)` when `hasattr(sys, "frozen")`, else the parent of the `sportorg` package (move the body of `config.module_path()`)
-- [ ] 1.3 `package_dir(*p)` — `importlib.resources` over `sportorg.data`; move `_RESOURCE_STACK` / `_RESOURCE_PATH_CACHE` / `package_data_path` here verbatim from `config.py`
-- [ ] 1.4 `data_dir(*p)` → `{app}/data`, `log_dir(*p)` → `{app}/logs`
-- [ ] 1.5 `SEEDED = ("configs", "templates", "sounds")`
-- [ ] 1.6 `resolve_seeded(name, *p, override="")` — override → `{app}/data/<name>` if `isdir` → `package_dir(name)`
-- [ ] 1.7 `class PathsError(Exception)`
-- [ ] 1.8 `ensure_dirs()` — `makedirs(data_dir(), log_dir(), exist_ok=True)`; wrap `OSError` in `PathsError` carrying the offending path
-- [ ] 1.9 `seed_if_first_run()` — per name in `SEEDED`: skip if `exists(SETTINGS_JSON)` **or** `isdir(data_dir(name))`; else `copytree(package_dir(name), data_dir(name))`; `logging.info` each copy; catch and `logging.exception` per name without aborting
+- [x] 1.1 Create `sportorg/paths.py` with no import-time side effects
+- [x] 1.2 `app_dir(*p)` — `os.path.dirname(sys.executable)` when `hasattr(sys, "frozen")`, else the parent of the `sportorg` package (move the body of `config.module_path()`)
+- [x] 1.3 `package_dir(*p)` — `importlib.resources` over `sportorg.data`; move `_RESOURCE_STACK` / `_RESOURCE_PATH_CACHE` / `package_data_path` here verbatim from `config.py`
+- [x] 1.4 `data_dir(*p)` → `{app}/data`, `log_dir(*p)` → `{app}/logs`
+- [x] 1.5 `SEEDED = ("configs", "templates", "sounds")`
+- [x] 1.6 `resolve_seeded(name, *p, override="")` — override → `{app}/data/<name>` if `isdir` → `package_dir(name)`
+- [x] 1.7 `class PathsError(Exception)`
+- [x] 1.8 `ensure_dirs()` — `makedirs(data_dir(), log_dir(), exist_ok=True)`; wrap `OSError` in `PathsError` carrying the offending path
+- [x] 1.9 `seed_if_first_run()` — per name in `SEEDED`: skip if `exists(SETTINGS_JSON)` **or** `isdir(data_dir(name))`; else `copytree(package_dir(name), data_dir(name))`; `logging.info` each copy; catch and `logging.exception` per name without aborting
+- [x] 1.10 **Added during implementation:** `should_seed()` — false outside a frozen build. The brief says a source launch takes everything but `data/` and `logs/` from the package; seeding a checkout would also shadow `sportorg/data/`, so edits there would stop having any effect
 
 ## 2. `sportorg/config.py`
 
-- [ ] 2.1 Re-express `BASE_DIR`, `base_dir`, `module_path`, `IMG_DIR`, `img_dir`, `ICON_DIR`, `icon_dir`, `LOG_DIR`, `log_dir`, `DATA_DIR`, `data_dir`, `SOUND_DIR`, `sound_dir`, `STYLE_DIR`, `style_dir`, `LOCALE_DIR`, `locale_dir`, `TEMPLATE_DIR`, `CONFIG_INI`, `SETTINGS_JSON` as thin wrappers over `paths` — call sites stay untouched
-- [ ] 2.2 Delete `CONFIGS_DIR` and `config.configs_dir` — their only consumers are the `source_*_path` defaults, which become `""` in task 4.1; the resolver lives in `settings.py` instead
-- [ ] 2.3 Delete the `DIRS` list and the `for _DIR in DIRS: os.makedirs(...)` loop
-- [ ] 2.4 Convert the module-level `LOG_CONFIG` dict into `_build_log_config()` so `log_dir(...)` is interpolated at call time, and delete the module-level `logging.config.dictConfig(LOG_CONFIG)` call
-- [ ] 2.5 Keep `TEMPLATES_PATH` (`SPORTORG_TEMPLATES_PATH`) honoured as the package-tier override
+- [x] 2.1 Re-express `BASE_DIR`, `base_dir`, `module_path`, `IMG_DIR`, `img_dir`, `ICON_DIR`, `icon_dir`, `LOG_DIR`, `log_dir`, `DATA_DIR`, `data_dir`, `SOUND_DIR`, `sound_dir`, `STYLE_DIR`, `style_dir`, `LOCALE_DIR`, `locale_dir`, `TEMPLATE_DIR`, `CONFIG_INI`, `SETTINGS_JSON` as thin wrappers over `paths` — call sites stay untouched
+- [x] 2.2 Delete `CONFIGS_DIR` and `config.configs_dir` — their only consumers are the `source_*_path` defaults, which become `""` in task 4.1; the resolver lives in `settings.py` instead
+- [x] 2.3 Delete the `DIRS` list and the `for _DIR in DIRS: os.makedirs(...)` loop
+- [x] 2.4 Convert the module-level `LOG_CONFIG` dict into `build_log_config()` so `log_dir(...)` is interpolated at call time, and delete the module-level `logging.config.dictConfig(LOG_CONFIG)` call — named without the leading underscore of the original plan, since `startup.py` calls it
+- [x] 2.5 Keep `TEMPLATES_PATH` (`SPORTORG_TEMPLATES_PATH`) honoured — as the override *below* an explicit settings value, which is the precedence it had before (it only ever supplied the default for `templates_path`)
+- [x] 2.6 **Added during implementation:** delete `runtime_dir` (the only source of `os.getcwd()` in path resolution), and the `SOUND_DIR` / `TEMPLATE_DIR` / `DEFAULT_TEMPLATE_DIR` constants, which would have frozen a pre-seeding answer at import time. `sound_dir()` resolves through `resolve_seeded`; `settings.template_dir()` owns template resolution. `config.SOUND_DIR`'s only consumer, `common/audio.py`, now calls `config.sound_dir()`
 
 ## 3. `sportorg/startup.py` and entry point
 
-- [ ] 3.1 Create `sportorg/startup.py` with `configure_logging()` calling `logging.config.dictConfig(config._build_log_config())`
-- [ ] 3.2 `init()` — `paths.ensure_dirs()` → `configure_logging()` → `paths.seed_if_first_run()`, in that order
-- [ ] 3.3 Rewrite `SportOrg.pyw` as a `main()` that calls `init()` before `from sportorg.gui.main import Application` (avoids `E402`)
-- [ ] 3.4 Catch `PathsError` in `main()`; show `QMessageBox.critical` naming the path and reason; exit non-zero
+- [x] 3.1 Create `sportorg/startup.py` with `configure_logging()` calling `logging.config.dictConfig(config.build_log_config())`
+- [x] 3.2 `init()` — `paths.ensure_dirs()` → `configure_logging()` → `paths.seed_if_first_run()`, in that order (guarded by `should_seed()`); also creates `SPORTORG_TEMPLATES_PATH` when set, which the deleted `DIRS` loop used to do
+- [x] 3.3 Rewrite `SportOrg.pyw` as a `main()` that calls `init()` before `from sportorg.gui.main import Application` (avoids `E402`)
+- [x] 3.4 Catch `PathsError` in `main()`; show `QMessageBox.critical` naming the path and reason; exit non-zero. Falls back to `stderr` when Qt is unavailable
 
 ## 4. Settings sentinel
 
-- [ ] 4.1 Change `templates_path` and the nine `source_*_path` defaults to `""`
-- [ ] 4.2 Add `settings_version: int = 1` to the dataclass and `CURRENT_SETTINGS_VERSION = 2` at module level
-- [ ] 4.3 Add `configs_dir(*p)` in `settings.py` delegating to `paths.resolve_seeded("configs", *p)`
-- [ ] 4.4 Add nine named accessors (`names_path()`, `middle_names_path()`, `countries_path()`, `groups_path()`, `regions_path()`, `status_comments_path()`, `status_default_comments_path()`, `ranking_score_path()`, `ranking_ardf_score_path()`) plus `rent_cards_path()`, each `override or default`
-- [ ] 4.5 Update `template_dir()` to `SETTINGS.templates_path or paths.resolve_seeded("templates")`
-- [ ] 4.6 Point call sites at the accessors: `gui/main.py` (`set_status_comments`, `set_countries`, `set_groups`, `set_names`, `set_middle_names`, `set_regions`, `set_ranking`, `set_ranking_ardf`, `set_rent_cards`) and `models/constant.py:95`
+- [x] 4.1 Change `templates_path` and the nine `source_*_path` defaults to `""`
+- [x] 4.2 Add `settings_version: int = 1` to the dataclass and `CURRENT_SETTINGS_VERSION = 2` at module level
+- [x] 4.3 Add `configs_dir(*p)` in `settings.py` delegating to `paths.resolve_seeded("configs", *p)`
+- [x] 4.4 Add nine named accessors (`names_path()`, `middle_names_path()`, `countries_path()`, `groups_path()`, `regions_path()`, `status_comments_path()`, `status_default_comments_path()`, `ranking_score_path()`, `ranking_ardf_score_path()`) plus `rent_cards_path()`, each `override or default`
+- [x] 4.5 Update `template_dir()` to `SETTINGS.templates_path or paths.resolve_seeded("templates")`
+- [x] 4.6 Point call sites at the accessors: `gui/main.py` (`set_status_comments`, `set_countries`, `set_groups`, `set_names`, `set_middle_names`, `set_regions`, `set_ranking`, `set_ranking_ardf`, `set_rent_cards`), `models/constant.py:95`, and `gui/dialogs/rent_cards_dialog.py`
 
 ## 5. Settings migration
 
-- [ ] 5.1 Implement `_migrate_paths(settings)` — clear a field only when `not os.path.exists(value)` **and** the value matches a former-default shape (`configs/<name>.txt`, `data/rent_cards.txt`, `sportorg/data/templates`, `templates`); compare with normalised separators, case-insensitively
-- [ ] 5.2 Wire into `load_settings_from_file()`: run when `settings_version < CURRENT_SETTINGS_VERSION`, then set the version and `save_settings_to_file()`
-- [ ] 5.3 `logging.info` each cleared field with its old value
+- [x] 5.1 Implement `_migrate_paths(settings)` — clear a field only when `not os.path.exists(value)` **and** the value matches a former-default shape (`configs/<name>.txt`, `data/rent_cards.txt`, `sportorg/data/templates`, `templates`); compare with normalised separators, case-insensitively. Compares whole path *segments*, not string suffixes, so `\\server\share\my-templates` is not mistaken for `templates`
+- [x] 5.2 Wire into `load_settings_from_file()`: run when `settings_version < CURRENT_SETTINGS_VERSION`, then set the version and `save_settings_to_file()`
+- [x] 5.3 `logging.info` each cleared field with its old value
+- [x] 5.4 **Added during implementation:** expose the predicate as `sanitize_path(field, value)` and reuse it in `gui/main.py` for the `config.ini` → `settings.json` import, so a legacy `templates` directory recorded there does not arrive already migrated and untouchable
 
 ## 6. Package layout
 
-- [ ] 6.1 `git mv configs sportorg/data/configs` (nine `.txt` files)
-- [ ] 6.2 Remove `(config.base_dir("configs"), "configs")` from `include_files` in `builder.py`
-- [ ] 6.3 Verify `git status` shows the nine files tracked under the new path (`.gitignore` already negates `!sportorg/data/**`)
+- [x] 6.1 `git mv configs sportorg/data/configs` (nine `.txt` files)
+- [x] 6.2 Remove `(config.base_dir("configs"), "configs")` from `include_files` in `builder.py`
+- [x] 6.3 Verify `git status` shows the nine files tracked under the new path (`.gitignore` already negates `!sportorg/data/**`)
 
 ## 7. Installers
 
-- [ ] 7.1 `builder.py` — add `Directory`, `CreateFolder` and `LockPermissions` rows to `bdist_msi_options["data"]` for `{app}\data` and `{app}\logs`, granting `Everyone` write
-- [ ] 7.2 **Verification gate:** build the MSI, install as a standard (non-admin) user, confirm the application starts and writes `logs\sportorg.log`. If `LockPermissions` proves unmanageable, stop and report rather than improvising
-- [ ] 7.3 `sportorg.iss` — `BuildDir` → `build\exe.win-amd64-3.8`; accept `MyAppVersion` / `MyVersionInfoVersion` via `ISCC /D` with the current literals as fallback defaults; `{pf}` → `{autopf}`; delete the `AdditionalLib32` `[Files]` entry and its `#define`
-- [ ] 7.4 Confirm the existing `[Dirs]` block still lists only `data`, `logs` (and drop the now-redundant `configs` entry, since it moved under `data`)
+- [x] 7.1 `builder.py` — add `Directory`, `CreateFolder` and `LockPermissions` rows to `bdist_msi_options["data"]` for `{app}\data` and `{app}\logs`, granting `Everyone` write
+- [ ] 7.2 **Verification gate — NOT DONE, blocked:** build the MSI, install as a standard (non-admin) user, confirm the application starts and writes `logs\sportorg.log`. `cx_Freeze` is pinned to Python 3.8 and ≥3.14 only; the local environment is 3.13 (3.14 has no `cx_Freeze` wheel and building `cx-logging` needs MSVC), and `msilib` was removed in Python 3.13, so no MSI can be produced or inspected here. Row shapes were checked by hand against the MSI schema (`Directory` 3 columns, `CreateFolder` 2, `LockPermissions` 5) and `Everyone` is a well-known name MSI resolves itself, so this also holds on a Russian Windows. Still needs a real install to confirm
+- [x] 7.3 `sportorg.iss` — `BuildDir` → `build\exe.win-amd64-3.8`; accept `MyAppVersion` / `MyVersionInfoVersion` via `ISCC /D` with the current literals as fallback defaults; `{pf}` → `{autopf}`; delete the `AdditionalLib32` `[Files]` entry and its `#define`. Also sets `OutputDir=dist` so all three artifacts land together
+- [x] 7.4 Confirm the existing `[Dirs]` block still lists only `data`, `logs` (and drop the now-redundant `configs` entry, since it moved under `data`)
 
 ## 8. CI
 
-- [ ] 8.1 `release.yml` — after `builder.py build`, add an ISCC step passing the version from `sportorg.config.VERSION`; check whether `ISCC` exists on `windows-latest`, otherwise `choco install innosetup`
-- [ ] 8.2 Add a step zipping `build\exe.win-amd64-3.8\` to `SportOrg-<version>-portable.zip`
-- [ ] 8.3 Extend `upload-artifact` and the release `files:` list to all three artifacts
+- [x] 8.1 `release.yml` — after `builder.py build`, add an ISCC step passing the version from `sportorg.config.VERSION`; checks for `ISCC` on `windows-latest` and falls back to `choco install innosetup`
+- [x] 8.2 Add a step zipping the frozen build directory to `SportOrg-<version>-portable.zip`; the directory is discovered with a `build\exe.*` glob rather than hard-coded
+- [x] 8.3 Extend `upload-artifact` and the release `files:` list to all three artifacts
 
 ## 9. Tests
 
-- [ ] 9.1 `tests/test_paths.py` — fixture pointing `app_dir()` at `tmp_path`
-- [ ] 9.2 `app_dir()` frozen vs source, via patched `sys.frozen` / `sys.executable`
-- [ ] 9.3 `resolve_seeded` chain: override → `data/` → package
-- [ ] 9.4 `seed_if_first_run` across all four presence combinations; assert existing files are never overwritten
-- [ ] 9.5 `ensure_dirs()` raises `PathsError`, via patched `os.makedirs`
-- [ ] 9.6 `tests/test_settings_migration.py` — dead old-shaped path cleared; live path kept; foreign-shaped missing path kept; second run is a no-op; version written
-- [ ] 9.7 Confirm a `pytest` run no longer creates `data/`, `configs/` or `logs/` in the working directory
+- [x] 9.1 `tests/test_paths.py` — fixture pointing `app_dir()` at `tmp_path`
+- [x] 9.2 `app_dir()` frozen vs source, via patched `sys.frozen` / `sys.executable`
+- [x] 9.3 `resolve_seeded` chain: override → `data/` → package
+- [x] 9.4 `seed_if_first_run` across all four presence combinations; assert existing files are never overwritten
+- [x] 9.5 `ensure_dirs()` raises `PathsError`, via patched `os.makedirs`
+- [x] 9.6 `tests/test_settings_migration.py` — dead old-shaped path cleared; live path kept; foreign-shaped missing path kept; second run is a no-op; version written
+- [x] 9.7 Confirm a `pytest` run no longer creates `data/`, `configs/` or `logs/` in the working directory — verified by deleting them and re-running
 
 ## 10. Manual verification
 
-- [ ] 10.1 Source launch from the repository root — `data/`, `logs/` appear at the root; `data/configs`, `data/templates`, `data/sounds` seeded on a clean checkout
-- [ ] 10.2 Source launch with `cd` elsewhere — same locations, nothing created in the working directory
-- [ ] 10.3 Portable: unpack the zip into an empty directory, run, confirm all directories are created and seeded next to the executable
-- [ ] 10.4 Inno install as standard user — start, generate a report, confirm `logs\sportorg.log` is written
-- [ ] 10.5 Upgrade path: place a pre-migration `settings.json` with dead `configs/*.txt` paths, start, confirm the fields are cleared, `settings_version` is `2`, and reports still render from the package templates
+- [x] 10.1 Source launch from the repository root — `data/`, `logs/` appear at the root and **nothing is seeded** (amended from the original plan, see 1.10); templates, configs and sounds resolve to `sportorg/data/`
+- [x] 10.2 Source launch with `cd` elsewhere — same locations, nothing created in the working directory
+- [~] 10.3 Portable: simulated by faking `sys.frozen` / `sys.executable` into an empty temporary directory. `data/` and `logs/` are created next to the "executable", all three directories are seeded from the package, and a second start preserves an edited `ranking.txt`. Not yet run against a real `.zip` — see 7.2
+- [ ] 10.4 **NOT DONE, blocked:** Inno install as standard user — start, generate a report, confirm `logs\sportorg.log` is written. Needs a frozen build and Inno Setup, neither available locally
+- [x] 10.5 Upgrade path: a pre-migration `settings.json` with dead `configs/*.txt` paths clears exactly those fields, keeps a `D:\...` path of a different shape, writes `settings_version: 2`, preserves unrelated keys, and still renders the four report templates from the package copy — the tier-3 fallback doing what it was designed for
 
 ## 11. Release chores
 
-- [ ] 11.1 Bump `config.VERSION` to `v1.8.0b2`
-- [ ] 11.2 Add entries to `changelog.md` and `changelog_ru.md` under `## next`
-- [ ] 11.3 `uv run poe all` green (format, lint, test at the 42% branch threshold)
+- [x] 11.1 Bump `config.VERSION` to `v1.8.0b2` (and `pyproject.toml` / the project entry in `uv.lock`, which `uv sync --frozen` validates)
+- [x] 11.2 Add entries to `changelog.md` and `changelog_ru.md` under `## next`
+- [x] 11.3 `uv run poe all` green (format, lint, test at the 42% branch threshold) — 265 passed, 12 skipped, 50.24%
+- [x] 11.4 **Added during implementation:** correct the project layout section of `AGENTS.md`, which pointed at the pre-`sportorg/data/` locations, and sync `CLAUDE.md` on the openspec branch

@@ -10,6 +10,7 @@ Written against `master` (`b0391dd1`). The branch `ank/dev` is not merged into `
 |---|---|---|
 | How are paths stored in `settings.json`? | Sentinel: empty means "resolve from `{app}`" | Matches the existing `sound_*_path` idiom (`Optional[str] = None` + `or config.sound_dir(...)`); keeps genuine user overrides intact |
 | When is the package copied into `data/`? | First run only: no `settings.json` **and** no directory | Chosen deliberately over merge-on-every-start; the package tier of the resolution chain absorbs the resulting gap |
+| Does a source checkout seed? | No — frozen builds only | Required by the brief ("остальные директории берёт из пакета"), and copying into `data/` would shadow `sportorg/data/`, so a developer's edit to a template would silently stop having any effect |
 | Where does the installer put the program? | `Program Files` + `everyone-full` ACL on `data/` and `logs/` | Keeps `{app}` ASCII-only. A per-user install under `%LOCALAPPDATA%` would put Cyrillic in `{app}` for every user whose Windows account name is Cyrillic, which is common in the target audience and interacts with a known-but-unidentified Cyrillic path defect |
 | Release artifacts | MSI + Inno `.exe` + portable `.zip` | — |
 | Code structure | Dedicated `paths.py` + explicit `init()` | The feature requires a deterministic startup order; import-time side effects cannot express one |
@@ -68,12 +69,12 @@ def main() -> None:
 
 1. `paths.ensure_dirs()` — create `{app}/data/` and `{app}/logs/`.
 2. `configure_logging()` — file handlers are created only now that `logs/` exists.
-3. `paths.seed_if_first_run()` — for each of `configs`, `templates`, `sounds`, copy from the package when neither `settings.json` nor the target directory exists. Each copy is logged.
+3. `paths.seed_if_first_run()`, guarded by `paths.should_seed()` — for each of `configs`, `templates`, `sounds`, copy from the package when neither `settings.json` nor the target directory exists. Each copy is logged. `should_seed()` is false outside a frozen build, so a source checkout creates only `data/` and `logs/` and reads everything else from the package.
 4. return to `main()` → GUI import → `Application().run()` → `load_settings()`.
 
 Step 3 must precede settings load: `load_settings()` writes `settings.json` when migrating from `config.ini`, which would erase the first-run signal before it is read.
 
-`LOG_CONFIG` is currently a module-level dict with `log_dir(...)` interpolated at import. It becomes `_build_log_config()`, called from `configure_logging()` after the directories exist.
+`LOG_CONFIG` is currently a module-level dict with `log_dir(...)` interpolated at import. It becomes `build_log_config()`, called from `configure_logging()` after the directories exist.
 
 `language.py` needs no change. It reads `config.SETTINGS_JSON` at import, and because `paths.py` is pure computation the constant already points at the new location whether or not `init()` has run.
 
