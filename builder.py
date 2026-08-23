@@ -46,7 +46,8 @@ WRITABLE_DIRS = [
 ]
 
 bdist_msi_options = {
-    "all_users": False,
+    "all_users": True,
+    "initial_target_dir": r"[ProgramFiles64Folder]\{}".format(config.NAME),
     "data": {
         "Directory": [(logical, "TARGETDIR", name) for logical, name in WRITABLE_DIRS],
         "CreateFolder": [(logical, "TARGETDIR") for logical, _ in WRITABLE_DIRS],

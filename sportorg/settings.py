@@ -48,7 +48,7 @@ class Settings:
     templates_path: str = ""
     templates_settings: Dict[str, Any] = field(default_factory=dict)
     file_autosave_interval: int = 300
-    file_save_in_utf8: bool = False
+    file_save_in_utf8: bool = True
     file_save_in_gzip: bool = True
     file_generate_srb: bool = False
     file_open_recent_file: bool = False
@@ -149,6 +149,24 @@ def rent_cards_path() -> str:
     return SETTINGS.source_rent_cards_path or config.data_dir("rent_cards.txt")
 
 
+# The sound fields use None as their sentinel, so the shipped file has to be
+# resolved on read rather than written into settings.json on first run.
+def successful_sound_path() -> str:
+    return SETTINGS.sound_successful_path or config.sound_dir("ok.wav")
+
+
+def unsuccessful_sound_path() -> str:
+    return SETTINGS.sound_unsuccessful_path or config.sound_dir("failure.wav")
+
+
+def rented_card_sound_path() -> str:
+    return SETTINGS.sound_rented_card_path or config.sound_dir("rented_card.wav")
+
+
+def enter_number_sound_path() -> str:
+    return SETTINGS.sound_enter_number_path or config.sound_dir("enter_number.wav")
+
+
 # The shape each field had while paths were stored absolutely, as trailing
 # path segments.  A value matching one of these is a former default rather
 # than something the operator chose.
@@ -203,7 +221,8 @@ def _migrate_paths(settings: Settings) -> None:
             setattr(settings, field_name, sanitize_path(field_name, value))
 
 
-def load_settings_from_file(path: str = config.SETTINGS_JSON) -> Tuple[Settings, bool]:
+def load_settings_from_file(path: Optional[str] = None) -> Tuple[Settings, bool]:
+    path = path or config.SETTINGS_JSON
     loaded_settings = load_settings(Path(path), Settings)
     if loaded_settings is not None:
         set_settings(loaded_settings)
@@ -217,8 +236,59 @@ def load_settings_from_file(path: str = config.SETTINGS_JSON) -> Tuple[Settings,
     return SETTINGS, False
 
 
-def save_settings_to_file(path: str = config.SETTINGS_JSON) -> None:
-    save_settings(SETTINGS, Path(path))
+def save_settings_to_file(path: Optional[str] = None) -> None:
+    save_settings(SETTINGS, Path(path or config.SETTINGS_JSON))
+
+
+def load_settings_on_startup() -> None:
+    """Load settings.json, or produce one on a first run."""
+    _, exists = load_settings_from_file()
+    if exists:
+        return
+
+    if os.path.exists(config.CONFIG_INI):
+        import_legacy_config()
+
+    save_settings_to_file()
+
+
+def import_legacy_config() -> None:
+    """Carry the pre-1.6 config.ini over into settings.json."""
+    from sportorg.modules.configs.configs import Config, ConfigFile
+
+    Config().read()
+    SETTINGS.app_check_updates = Config().configuration.get("check_updates", True)
+    SETTINGS.locale = Config().configuration.get("current_locale", "ru_RU")
+    SETTINGS.logging_level = Config().configuration.get("logging_level", "INFO")
+    SETTINGS.logging_window_row_count = Config().configuration.get(
+        "log_window_row_count", 1000
+    )
+    SETTINGS.window_show_toolbar = Config().configuration.get("show_toolbar", True)
+    SETTINGS.window_geometry = Config().geometry.get("main", "01")
+    SETTINGS.window_dialog_path = Config().parser.get(
+        ConfigFile.DIRECTORY, "dialog_default_dir", fallback=""
+    )
+    SETTINGS.race_use_birthday = Config().configuration.get("use_birthday", False)
+    SETTINGS.templates_path = sanitize_path(
+        "templates_path", Config().templates.get("directory", "")
+    )
+    SETTINGS.file_autosave_interval = Config().configuration.get("autosave_interval", 0)
+    SETTINGS.file_save_in_utf8 = Config().configuration.get("save_in_utf8", True)
+    SETTINGS.file_save_in_gzip = Config().configuration.get("save_in_gzip", True)
+    SETTINGS.file_generate_srb = Config().configuration.get("generate_srb", True)
+    SETTINGS.file_open_recent_file = Config().configuration.get(
+        "open_recent_file", True
+    )
+    SETTINGS.printer_main = Config().printer.get("main", "")
+    SETTINGS.printer_split = Config().printer.get("split", "")
+    SETTINGS.sound_enabled = Config().sound.get("enabled", False)
+    SETTINGS.sound_successful_path = Config().sound.get("successful")
+    SETTINGS.sound_unsuccessful_path = Config().sound.get("unsuccessful")
+    SETTINGS.sound_rented_card_enabled = Config().sound.get("enabled_rented_card", True)
+    SETTINGS.sound_rented_card_path = Config().sound.get("rented_card")
+    SETTINGS.sound_enter_number_path = Config().sound.get("enter_number")
+    SETTINGS.ranking = Config().ranking.get_all() or {}
+    SETTINGS.ranking_ardf = Config().ranking_ardf.get_all() or {}
 
 
 def get_feature_flags() -> Dict[str, bool]:
