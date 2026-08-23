@@ -57,7 +57,8 @@
 ## 7. Installers
 
 - [x] 7.1 `builder.py` — add `Directory`, `CreateFolder` and `LockPermissions` rows to `bdist_msi_options["data"]` for `{app}\data` and `{app}\logs`, granting `Everyone` write
-- [ ] 7.2 **Verification gate — NOT DONE, blocked:** build the MSI, install as a standard (non-admin) user, confirm the application starts and writes `logs\sportorg.log`. `cx_Freeze` is pinned to Python 3.8 and ≥3.14 only; the local environment is 3.13 (3.14 has no `cx_Freeze` wheel and building `cx-logging` needs MSVC), and `msilib` was removed in Python 3.13, so no MSI can be produced or inspected here. Row shapes were checked by hand against the MSI schema (`Directory` 3 columns, `CreateFolder` 2, `LockPermissions` 5) and `Everyone` is a well-known name MSI resolves itself, so this also holds on a Russian Windows. Still needs a real install to confirm
+- [x] 7.2 **Verification gate — DONE.** Not blocked after all: Python 3.8.10 is installed locally, so a separate `.venv38` builds the frozen tree and the MSI. `bdist_msi` accepted the rows, and dumping the built package with `msilib` (still present on 3.8) shows `CreateFolder` and `LockPermissions` carrying `Everyone` / `268435456` for both directories. Installed into `Program Files`; `icacls` reports `Все = Полный доступ` on `data` and `logs`
+- [x] 7.2a **Found by that install:** the MSI was marked per-user (`all_users: False`), and Windows redirects `ProgramFilesFolder` to `%LOCALAPPDATA%\Programs` for a per-user install, so it offered `C:\Users\<User>\AppData\Local\Programs\sportorg\` — the Cyrillic-path exposure this change exists to avoid, and it also made the permissions pointless. Now `all_users: True` with `initial_target_dir` pinned to `[ProgramFiles64Folder]\SportOrg`, matching Inno. **Note for the release:** MSI cannot upgrade across install contexts, so an existing per-user installation must be removed by hand
 - [x] 7.3 `sportorg.iss` — `BuildDir` → `build\exe.win-amd64-3.8`; accept `MyAppVersion` / `MyVersionInfoVersion` via `ISCC /D` with the current literals as fallback defaults; `{pf}` → `{autopf}`; delete the `AdditionalLib32` `[Files]` entry and its `#define`. Also sets `OutputDir=dist` so all three artifacts land together
 - [x] 7.4 Confirm the existing `[Dirs]` block still lists only `data`, `logs` (and drop the now-redundant `configs` entry, since it moved under `data`)
 
@@ -81,8 +82,8 @@
 
 - [x] 10.1 Source launch from the repository root — `data/`, `logs/` appear at the root and **nothing is seeded** (amended from the original plan, see 1.10); templates, configs and sounds resolve to `sportorg/data/`
 - [x] 10.2 Source launch with `cd` elsewhere — same locations, nothing created in the working directory
-- [~] 10.3 Portable: simulated by faking `sys.frozen` / `sys.executable` into an empty temporary directory. `data/` and `logs/` are created next to the "executable", all three directories are seeded from the package, and a second start preserves an edited `ranking.txt`. Not yet run against a real `.zip` — see 7.2
-- [ ] 10.4 **NOT DONE, blocked:** Inno install as standard user — start, generate a report, confirm `logs\sportorg.log` is written. Needs a frozen build and Inno Setup, neither available locally
+- [~] 10.3 Portable: simulated by faking `sys.frozen` / `sys.executable` into an empty temporary directory. `data/` and `logs/` are created next to the "executable", all three directories are seeded from the package, and a second start preserves an edited `ranking.txt`. Not yet run against a real `.zip`
+- [ ] 10.4 **NOT DONE:** Inno install as standard user — start, generate a report, confirm `logs\sportorg.log` is written. Needs Inno Setup, which is not installed locally (`winget install JRSoftware.InnoSetup`)
 - [x] 10.5 Upgrade path: a pre-migration `settings.json` with dead `configs/*.txt` paths clears exactly those fields, keeps a `D:\...` path of a different shape, writes `settings_version: 2`, preserves unrelated keys, and still renders the four report templates from the package copy — the tier-3 fallback doing what it was designed for
 
 ## 11. Release chores
@@ -91,3 +92,15 @@
 - [x] 11.2 Add entries to `changelog.md` and `changelog_ru.md` under `## next`
 - [x] 11.3 `uv run poe all` green (format, lint, test at the 42% branch threshold) — 265 passed, 12 skipped, 50.24%
 - [x] 11.4 **Added during implementation:** correct the project layout section of `AGENTS.md`, which pointed at the pre-`sportorg/data/` locations, and sync `CLAUDE.md` on the openspec branch
+
+## 12. Found by installing the MSI
+
+- [x] 12.1 MSI install context — see 7.2a
+- [x] 12.2 Startup ran the `config.ini` import unconditionally, so a fresh installation adopted `Config()`'s pre-1.6 defaults instead of the dataclass ones: auto-save 5 s instead of 5 min (silently undoing #497 for every new user), UTF-8 saving and SRB generation on, sound disabled, and absolute sound paths frozen into `settings.json`. The import now runs only when `config.ini` exists
+- [x] 12.3 The 5 the operator saw rather than the stored 0 comes from `gui/dialogs/settings.py`, where `AdvSpinBox(value=...)` is followed by `setMinimum(5)`; Qt raises the current value to the new minimum. Left alone — with 12.2 fixed the stored value is 300 and nothing is clamped. **Still open as a separate question:** 0 means "auto-save disabled" to `main_window.py`, but the dialog cannot express it and silently turns it into 5
+- [x] 12.4 Moved the import out of `Application.load_settings` into `settings.load_settings_on_startup()` / `settings.import_legacy_config()`. Testing it in the GUI layer pulled PySide6 into the coverage run and dropped total coverage from 50% to 32%; the logic is settings logic and belongs there. Two dead fallbacks (`"logging_level", True` and `"log_window_row_count", True` for a `str` and an `int` field) corrected in passing
+- [x] 12.5 Sound defaults resolve through `settings.successful_sound_path()` and friends instead of being written into `settings.json`. Without this, 12.2 would have made `sound_*_path` stay `None`, and `Sound._play` treats `None` as silence
+- [x] 12.6 `tests/test_first_run_settings.py` — first run without `config.ini` keeps the dataclass defaults, writes `settings.json`, leaves the sound paths unset; a real `config.ini` is still imported; an existing `settings.json` still wins
+- [x] 12.7 `load_settings_from_file` / `save_settings_to_file` take `Optional[str] = None` and resolve `config.SETTINGS_JSON` at call time — as default arguments they were frozen at import and no test could redirect them
+
+**Behaviour change to be aware of:** `sound_enabled` now keeps its dataclass default of `True` on a fresh installation. The legacy import used to force it to `False`, so sounds were off out of the box.
