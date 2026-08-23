@@ -37,6 +37,12 @@ The system SHALL resolve each of `configs`, `templates` and `sounds` through `pa
 ### Requirement: First-run seeding from the package
 The system SHALL copy the contents of the package directories `configs`, `templates` and `sounds` into `{app}/data/<name>/` when, for that name, `settings.json` does not exist **and** `{app}/data/<name>/` does not exist. Each directory SHALL be evaluated independently. Existing files SHALL NEVER be overwritten. Each copy SHALL be recorded in the log. A failure to copy SHALL be logged and SHALL NOT abort startup.
 
+Seeding SHALL run only in frozen builds. A source checkout SHALL read the package directories directly, so that edits under `sportorg/data/` keep taking effect instead of being shadowed by a copy under `data/`.
+
+#### Scenario: A source checkout seeds nothing
+- **WHEN** the application is started from a repository checkout
+- **THEN** `{app}/data/` and `{app}/logs/` are created but `data/configs`, `data/templates` and `data/sounds` are not, and resolution reads the package directories
+
 #### Scenario: Fresh installation seeds all three
 - **WHEN** neither `settings.json` nor any of the three directories exists
 - **THEN** all three directories are created and filled from the package
@@ -54,7 +60,7 @@ The system SHALL copy the contents of the package directories `configs`, `templa
 - **THEN** the exception is logged and startup continues
 
 ### Requirement: Explicit startup initialisation
-The system SHALL provide `sportorg/startup.py` with `init()` performing, in order: `paths.ensure_dirs()`, `configure_logging()`, `paths.seed_if_first_run()`. `SportOrg.pyw` SHALL call `init()` before importing `sportorg.gui.main`. `sportorg/config.py` SHALL NOT create directories or call `logging.config.dictConfig` at import time; the logging configuration SHALL be produced by `_build_log_config()` evaluated after `ensure_dirs()`.
+The system SHALL provide `sportorg/startup.py` with `init()` performing, in order: `paths.ensure_dirs()`, `configure_logging()`, `paths.seed_if_first_run()`. `SportOrg.pyw` SHALL call `init()` before importing `sportorg.gui.main`. `sportorg/config.py` SHALL NOT create directories or call `logging.config.dictConfig` at import time; the logging configuration SHALL be produced by `build_log_config()` evaluated after `ensure_dirs()`.
 
 #### Scenario: Seeding precedes settings load
 - **WHEN** the application starts for the first time

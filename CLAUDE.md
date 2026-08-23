@@ -43,6 +43,21 @@ To run a single test: `uv run pytest tests/test_<name>.py -vv`
 | Modules | `sportorg/modules/` | Feature plugins: hardware readers, live results, printing, backup, teamwork |
 | Libs | `sportorg/libs/` | Format parsers: IOF XML, OCAD, WinOrient WDB |
 | Common | `sportorg/common/` | Shared utilities: `otime.py` (time math), `singleton.py`, `template.py` |
+| Package data | `sportorg/data/` | Shipped resources: `img/`, `languages/`, `styles/`, plus the seedable `configs/`, `templates/`, `sounds/` |
+
+### Paths
+
+Nothing resolves from the working directory. `sportorg/paths.py` derives every path from the program itself and has no import-time side effects; `sportorg/startup.py` runs `init()` from `SportOrg.pyw` before the GUI is imported, creating the directories and configuring logging.
+
+| Root | Contents |
+|------|----------|
+| `package_dir()` → `sportorg/data/` | Read-only resources |
+| `{app}/data/` | Races, `settings.json`, and the operator's copies of `configs/`, `templates/`, `sounds/` |
+| `{app}/logs/` | `sportorg.log`, `sportorg-errors.log`, chip-reader backups |
+
+`{app}` is the directory holding the executable, or the repository root when running from source. `configs`, `templates` and `sounds` resolve in three tiers — a non-empty override in settings, then `{app}/data/<name>/`, then the package — so a missing data directory never raises. A frozen build copies the package defaults into `{app}/data/` on its first run; a source checkout does not, and reads `sportorg/data/` directly.
+
+Path fields in `settings.py` default to `""`, meaning "resolve from `{app}`"; read them through the accessors (`ranking_score_path()`, `template_dir()`, …), never off `SETTINGS` directly.
 
 ### Hardware integrations (under `sportorg/modules/`)
 
@@ -52,8 +67,10 @@ To run a single test: `uv run pytest tests/test_<name>.py -vv`
 
 - `sportorg/models/memory.py` — all core domain models; understand this first
 - `sportorg/modules/backup/json.py` — race serialization/deserialization
-- `sportorg/config.py` — path constants, logging, debug mode
-- `sportorg/language.py` — i18n; `.po` source files in `languages/<locale>/LC_MESSAGES/`, compiled to `.mo` at runtime
+- `sportorg/paths.py` — the three filesystem roots and the seeding rules
+- `sportorg/startup.py` — `init()`: create directories, configure logging, seed
+- `sportorg/config.py` — named paths over `paths.py`, logging config, debug mode, version
+- `sportorg/language.py` — i18n; `.po` source files in `sportorg/data/languages/<locale>/LC_MESSAGES/`, compiled to `.mo` at runtime
 
 ## Coding Conventions
 
@@ -72,4 +89,4 @@ Example: `feat(live): add Orgeo client`
 
 ## Configuration & Secrets
 
-Sensitive values (live endpoints, Telegram tokens) go in local config files under `configs/` — never committed. Use `aiohttp` mocks in tests to prevent accidental external traffic.
+Sensitive values (live endpoints, Telegram tokens) go in local config files under `{app}/data/configs/` — never committed; the tracked reference copies live in `sportorg/data/configs/`. Use `aiohttp` mocks in tests to prevent accidental external traffic.
