@@ -34,6 +34,7 @@
 + Added short title field in event properties: shown in the window title and multi-day race selector
 + Added feature flags in settings with SFR support toggle for menu visibility
 + Added Light / Dark / System theme switcher
++ Releases now publish an Inno Setup installer and a portable archive alongside the MSI, installers create `{app}\data` and `{app}\logs` and grant write access
 
 ### Fixes
 
@@ -56,6 +57,8 @@
 + Fixed duplicate results in teamwork
 + Fixed: groups and organizations lost their sort order when sending selected items to a report template (HTML/DOCX/CSV)
 + Fixed: lost results in a multiday race when sending selected items to a report template (HTML/DOCX/CSV)
++ Fixed: data, logs, configs, templates and sounds are now resolved relative to the program instead of the working directory
++ Fixed: `uv run poe run` also runs `generate-mo` and `generate-version`
 
 ## 2025-04-01
 

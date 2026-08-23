@@ -14,7 +14,6 @@ include_files = [
     config.base_dir("LICENSE"),
     config.base_dir("changelog.md"),
     config.base_dir("changelog_ru.md"),
-    (config.base_dir("configs"), "configs"),
     config.COMMIT_VERSION_FILE,
 ]
 includes = ["atexit", "codecs", "playsound3", "pyImpinj"]
@@ -35,9 +34,26 @@ build_exe_options = {
     "silent": 1,
 }
 
+# SportOrg stores its races, settings and logs next to the executable, so an
+# operator without administrative rights has to be able to write there.  The
+# installer creates both directories and grants Everyone full control; MSI
+# maps the name "Everyone" to the well-known SID itself, so this also works on
+# a localised Windows.
+GENERIC_ALL = 0x10000000
+WRITABLE_DIRS = [
+    ("DataDir", "data"),
+    ("LogDir", "logs"),
+]
+
 bdist_msi_options = {
     "all_users": False,
     "data": {
+        "Directory": [(logical, "TARGETDIR", name) for logical, name in WRITABLE_DIRS],
+        "CreateFolder": [(logical, "TARGETDIR") for logical, _ in WRITABLE_DIRS],
+        "LockPermissions": [
+            (logical, "CreateFolder", None, "Everyone", GENERIC_ALL)
+            for logical, _ in WRITABLE_DIRS
+        ],
         "Shortcut": [
             (
                 "DesktopShortcut",  # Shortcut
@@ -53,7 +69,7 @@ bdist_msi_options = {
                 None,  # ShowCmd
                 "TARGETDIR",  # WkDir
             ),
-        ]
+        ],
     },
 }
 

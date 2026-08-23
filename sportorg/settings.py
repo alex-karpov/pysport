@@ -1,9 +1,10 @@
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from sportorg import config
+from sportorg import config, paths
 from sportorg.libs.settings import load_settings, save_settings
 
 FEATURE_SFR = "sfr"
@@ -25,9 +26,16 @@ DEFAULT_FEATURES = {
     FEATURE_TELEGRAM: True,
 }
 
+# Bumped whenever stored settings need a one-time fix-up on load.
+CURRENT_SETTINGS_VERSION = 2
+
 
 @dataclass
 class Settings:
+    # 1 means "written before path settings became app-relative".  The
+    # default has to be the legacy value: a key missing from settings.json
+    # falls back to it, and that is exactly the file we need to migrate.
+    settings_version: int = 1
     app_check_updates: bool = True
     theme: str = "system"
     locale: str = "ru_RU"
@@ -37,7 +45,7 @@ class Settings:
     window_dialog_path: str = ""
     window_geometry: str = ""
     race_use_birthday: bool = False
-    templates_path: str = config.TEMPLATE_DIR
+    templates_path: str = ""
     templates_settings: Dict[str, Any] = field(default_factory=dict)
     file_autosave_interval: int = 300
     file_save_in_utf8: bool = False
@@ -69,16 +77,16 @@ class Settings:
     teamwork_encryption_key: str = ""
     teamwork_check_race_id: bool = False
 
-    source_names_path: str = config.configs_dir("names.txt")
-    source_middle_names_path: str = config.configs_dir("middle_names.txt")
-    source_countries_path: str = config.configs_dir("countries.txt")
-    source_groups_path: str = config.configs_dir("groups.txt")
-    source_regions_path: str = config.configs_dir("regions.txt")
-    source_status_comments_path: str = config.configs_dir("status_comments.txt")
-    source_status_default_comments_path: str = config.configs_dir("status_default.txt")
-    source_ranking_score_path: str = config.configs_dir("ranking.txt")
-    source_ranking_ardf_score_path: str = config.configs_dir("ranking_ardf.txt")
-    source_rent_cards_path: str = config.data_dir("rent_cards.txt")
+    source_names_path: str = ""
+    source_middle_names_path: str = ""
+    source_countries_path: str = ""
+    source_groups_path: str = ""
+    source_regions_path: str = ""
+    source_status_comments_path: str = ""
+    source_status_default_comments_path: str = ""
+    source_ranking_score_path: str = ""
+    source_ranking_ardf_score_path: str = ""
+    source_rent_cards_path: str = ""
 
 
 SETTINGS = Settings()
@@ -89,12 +97,123 @@ def set_settings(settings: Settings) -> None:
     SETTINGS = settings
 
 
+def configs_dir(*parts: str) -> str:
+    return paths.resolve_seeded("configs", *parts)
+
+
+def template_dir(*parts: str) -> str:
+    return paths.resolve_seeded(
+        "templates", *parts, override=SETTINGS.templates_path or config.TEMPLATES_PATH
+    )
+
+
+def names_path() -> str:
+    return SETTINGS.source_names_path or configs_dir("names.txt")
+
+
+def middle_names_path() -> str:
+    return SETTINGS.source_middle_names_path or configs_dir("middle_names.txt")
+
+
+def countries_path() -> str:
+    return SETTINGS.source_countries_path or configs_dir("countries.txt")
+
+
+def groups_path() -> str:
+    return SETTINGS.source_groups_path or configs_dir("groups.txt")
+
+
+def regions_path() -> str:
+    return SETTINGS.source_regions_path or configs_dir("regions.txt")
+
+
+def status_comments_path() -> str:
+    return SETTINGS.source_status_comments_path or configs_dir("status_comments.txt")
+
+
+def status_default_comments_path() -> str:
+    return SETTINGS.source_status_default_comments_path or configs_dir(
+        "status_default.txt"
+    )
+
+
+def ranking_score_path() -> str:
+    return SETTINGS.source_ranking_score_path or configs_dir("ranking.txt")
+
+
+def ranking_ardf_score_path() -> str:
+    return SETTINGS.source_ranking_ardf_score_path or configs_dir("ranking_ardf.txt")
+
+
+def rent_cards_path() -> str:
+    return SETTINGS.source_rent_cards_path or config.data_dir("rent_cards.txt")
+
+
+# The shape each field had while paths were stored absolutely, as trailing
+# path segments.  A value matching one of these is a former default rather
+# than something the operator chose.
+_FORMER_DEFAULTS: Dict[str, Tuple[Tuple[str, ...], ...]] = {
+    "templates_path": (("sportorg", "data", "templates"), ("templates",)),
+    "source_names_path": (("configs", "names.txt"),),
+    "source_middle_names_path": (("configs", "middle_names.txt"),),
+    "source_countries_path": (("configs", "countries.txt"),),
+    "source_groups_path": (("configs", "groups.txt"),),
+    "source_regions_path": (("configs", "regions.txt"),),
+    "source_status_comments_path": (("configs", "status_comments.txt"),),
+    "source_status_default_comments_path": (("configs", "status_default.txt"),),
+    "source_ranking_score_path": (("configs", "ranking.txt"),),
+    "source_ranking_ardf_score_path": (("configs", "ranking_ardf.txt"),),
+    "source_rent_cards_path": (("data", "rent_cards.txt"),),
+}
+
+
+def _ends_with_segments(value: str, tail: Tuple[str, ...]) -> bool:
+    segments = [s for s in value.replace("\\", "/").split("/") if s]
+    if len(segments) < len(tail):
+        return False
+
+    return [s.lower() for s in segments[-len(tail) :]] == [t.lower() for t in tail]
+
+
+def sanitize_path(field_name: str, value: str) -> str:
+    """Replace a dead former-default path with the empty sentinel.
+
+    Both halves of the test are needed.  Clearing every missing path would
+    discard a network location that merely happens to be offline; clearing
+    every default-shaped path would discard a directory the operator picked
+    by hand that resolves fine.  Together they identify exactly the paths
+    left dangling by an installation that used to resolve them from the
+    working directory.
+    """
+    if not value or os.path.exists(value):
+        return value
+
+    for tail in _FORMER_DEFAULTS.get(field_name, ()):
+        if _ends_with_segments(value, tail):
+            logging.info("Clearing stale %s: %s", field_name, value)
+            return ""
+
+    return value
+
+
+def _migrate_paths(settings: Settings) -> None:
+    for field_name in _FORMER_DEFAULTS:
+        value = getattr(settings, field_name, "")
+        if isinstance(value, str):
+            setattr(settings, field_name, sanitize_path(field_name, value))
+
+
 def load_settings_from_file(path: str = config.SETTINGS_JSON) -> Tuple[Settings, bool]:
     loaded_settings = load_settings(Path(path), Settings)
     if loaded_settings is not None:
         set_settings(loaded_settings)
+        if SETTINGS.settings_version < CURRENT_SETTINGS_VERSION:
+            _migrate_paths(SETTINGS)
+            SETTINGS.settings_version = CURRENT_SETTINGS_VERSION
+            save_settings_to_file(path)
         return SETTINGS, True
 
+    SETTINGS.settings_version = CURRENT_SETTINGS_VERSION
     return SETTINGS, False
 
 
@@ -181,7 +300,3 @@ def set_plugin_saved_settings(plugin_id: str, plugin_data: Dict[str, Any]) -> No
         SETTINGS.plugin_settings = {}
 
     SETTINGS.plugin_settings[plugin_id] = plugin_data.copy()
-
-
-def template_dir(*paths) -> str:
-    return os.path.join(SETTINGS.templates_path, *paths)

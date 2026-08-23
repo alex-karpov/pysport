@@ -87,10 +87,9 @@ class Application(metaclass=Singleton):
             settings.SETTINGS.race_use_birthday = Config().configuration.get(
                 "use_birthday", False
             )
-            settings.SETTINGS.templates_path = Config().templates.get(
-                "directory", config.TEMPLATE_DIR
+            settings.SETTINGS.templates_path = settings.sanitize_path(
+                "templates_path", Config().templates.get("directory", "")
             )
-            print("Templates path:", settings.SETTINGS.templates_path)
             settings.SETTINGS.file_autosave_interval = Config().configuration.get(
                 "autosave_interval", 0
             )
@@ -131,9 +130,7 @@ class Application(metaclass=Singleton):
     @staticmethod
     def set_status_comments():
         try:
-            with open(
-                settings.SETTINGS.source_status_comments_path, encoding="utf-8"
-            ) as f:
+            with open(settings.status_comments_path(), encoding="utf-8") as f:
                 content = f.readlines()
             StatusComments().set([x.strip() for x in content])
 
@@ -141,9 +138,7 @@ class Application(metaclass=Singleton):
             logging.exception(str(e))
 
         try:
-            with open(
-                settings.SETTINGS.source_status_default_comments_path, encoding="utf-8"
-            ) as f:
+            with open(settings.status_default_comments_path(), encoding="utf-8") as f:
                 content = f.readlines()
             StatusComments().set_default_statuses(content)
         except Exception as e:
@@ -152,7 +147,7 @@ class Application(metaclass=Singleton):
     @staticmethod
     def set_countries():
         try:
-            with open(settings.SETTINGS.source_countries_path, encoding="utf-8") as f:
+            with open(settings.countries_path(), encoding="utf-8") as f:
                 content = f.readlines()
             Countries().set([x.strip() for x in content])
         except Exception as e:
@@ -161,7 +156,7 @@ class Application(metaclass=Singleton):
     @staticmethod
     def set_groups():
         try:
-            with open(settings.SETTINGS.source_groups_path, encoding="utf-8") as f:
+            with open(settings.groups_path(), encoding="utf-8") as f:
                 content = f.readlines()
             Groups().set([x.strip() for x in content])
         except Exception as e:
@@ -170,7 +165,7 @@ class Application(metaclass=Singleton):
     @staticmethod
     def set_names():
         try:
-            with open(settings.SETTINGS.source_names_path, encoding="utf-8") as f:
+            with open(settings.names_path(), encoding="utf-8") as f:
                 content = f.readlines()
             PersonNames().set([x.strip() for x in content])
         except Exception as e:
@@ -179,9 +174,7 @@ class Application(metaclass=Singleton):
     @staticmethod
     def set_middle_names():
         try:
-            with open(
-                settings.SETTINGS.source_middle_names_path, encoding="utf-8"
-            ) as f:
+            with open(settings.middle_names_path(), encoding="utf-8") as f:
                 content = f.readlines()
             PersonMiddleNames().set([x.strip() for x in content])
         except Exception as e:
@@ -190,7 +183,7 @@ class Application(metaclass=Singleton):
     @staticmethod
     def set_regions():
         try:
-            with open(settings.SETTINGS.source_regions_path, encoding="utf-8") as f:
+            with open(settings.regions_path(), encoding="utf-8") as f:
                 content = f.readlines()
             Regions().set([x.strip() for x in content])
         except Exception as e:
@@ -199,9 +192,7 @@ class Application(metaclass=Singleton):
     @staticmethod
     def set_ranking():
         try:
-            with open(
-                settings.SETTINGS.source_ranking_score_path, encoding="utf-8"
-            ) as f:
+            with open(settings.ranking_score_path(), encoding="utf-8") as f:
                 content = f.readlines()
             RankingTable().set_table([x.strip().split(";") for x in content])
         except Exception as e:
@@ -210,9 +201,7 @@ class Application(metaclass=Singleton):
     @staticmethod
     def set_ranking_ardf():
         try:
-            with open(
-                settings.SETTINGS.source_ranking_ardf_score_path, encoding="utf-8"
-            ) as f:
+            with open(settings.ranking_ardf_score_path(), encoding="utf-8") as f:
                 content = f.readlines()
             RankingTable().set_table([x.strip().split(";") for x in content], "ardf")
         except Exception as e:
@@ -221,7 +210,7 @@ class Application(metaclass=Singleton):
     @staticmethod
     def set_rent_cards():
         try:
-            with open(settings.SETTINGS.source_rent_cards_path, encoding="utf-8") as f:
+            with open(settings.rent_cards_path(), encoding="utf-8") as f:
                 content = f.read()
             RentCards().set_from_text(content)
         except FileNotFoundError:
