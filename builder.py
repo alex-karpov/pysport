@@ -45,8 +45,19 @@ WRITABLE_DIRS = [
     ("LogDir", "logs"),
 ]
 
+# Identifies the product across releases so that installing a new version
+# removes the old one instead of registering a second entry beside it.  This
+# GUID is product identity: generated once, it must never change again, or
+# every already-installed copy becomes un-upgradable.  It is deliberately not
+# the AppId from sportorg.iss -- Inno keeps its own uninstall registry and the
+# two never consult each other.
+#
+# ProductCode stays random per build, which is what a major upgrade requires.
+UPGRADE_CODE = "{D652DEE1-13E6-4D7A-B8FC-334FF475E5FD}"
+
 bdist_msi_options = {
     "all_users": True,
+    "upgrade_code": UPGRADE_CODE,
     "initial_target_dir": r"[ProgramFiles64Folder]\{}".format(config.NAME),
     "data": {
         "Directory": [(logical, "TARGETDIR", name) for logical, name in WRITABLE_DIRS],

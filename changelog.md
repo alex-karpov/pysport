@@ -36,6 +36,7 @@
 + Added Light / Dark / System theme switcher
 + Releases now publish an Inno Setup installer and a portable archive alongside the MSI, installers create `{app}\data` and `{app}\logs` and grant write access
 + Both installers now offer the 64-bit `Program Files` directory; the Inno installer used to default to `Program Files (x86)` for a 64-bit build
++ The MSI carries an upgrade code, so a new version replaces the installed one instead of registering a second entry next to it
 
 ### Fixes
 
