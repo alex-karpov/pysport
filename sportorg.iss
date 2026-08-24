@@ -31,6 +31,11 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
+; The payload is a 64-bit cx_Freeze build, so put the installer into 64-bit
+; install mode; otherwise {autopf} resolves to "Program Files (x86)".
+; Requires Inno Setup 6.3 or newer for the "x64compatible" spelling.
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
 DefaultDirName={autopf}\{#MyAppName}
 UsePreviousAppDir=no
 DisableProgramGroupPage=yes
