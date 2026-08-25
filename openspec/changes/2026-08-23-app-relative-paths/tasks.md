@@ -69,6 +69,8 @@
 - [x] 8.3 Extend `upload-artifact` and the release `files:` list to all three artifacts
 - [x] 8.4 **Verified against a real run** (`workflow_dispatch` on `ank/app-relative-paths`, run 32691039071, green in 4m12s). The `Windows-x64` artifact carries all three files. The MSI's tables survive the CI build unchanged: `CreateFolder` = DataDir/LogDir, `LockPermissions` = `Everyone` / `268435456` for both, `ALLUSERS=2` with no `MSIINSTALLPERUSER`, `A_SET_TARGET_DIR` = `[ProgramFiles64Folder]\SportOrg`. The portable archive is flat — `SportOrg.exe`, `version`, `LICENSE` and both changelogs at the root, no stray `configs/`, and `lib/sportorg/data/{configs,templates,sounds,img,languages,styles}` present so seeding has something to copy
 
+- [x] 8.5 Clear the `nightly` release before publishing. `softprops/action-gh-release` overwrites an asset only when the name matches, and every artifact name carries the version, so three files per build would pile up on the tag (upstream already carries `SportOrg-1.7.1-win64.msi` from Sept 2025 next to `sportorg-1.8.0b1-win64.msi`). A `gh release delete-asset` loop guarded by `github.ref == 'refs/tags/nightly'` runs before the release step; it deletes every asset without exception, tolerates a missing release, and only warns on failure so cleanup can never sink the release itself. GitHub's own `Source code (zip)`/`(tar.gz)` are `zipball_url`/`tarball_url`, not assets, and are unaffected
+
 ## 9. Tests
 
 - [x] 9.1 `tests/test_paths.py` — fixture pointing `app_dir()` at `tmp_path`
