@@ -34,9 +34,7 @@
 + Added short title field in event properties: shown in the window title and multi-day race selector
 + Added feature flags in settings with SFR support toggle for menu visibility
 + Added Light / Dark / System theme switcher
-+ Releases now publish an Inno Setup installer and a portable archive alongside the MSI, installers create `{app}\data` and `{app}\logs` and grant write access
-+ Both installers now offer the 64-bit `Program Files` directory; the Inno installer used to default to `Program Files (x86)` for a 64-bit build
-+ The MSI carries an upgrade code, so a new version replaces the installed one instead of registering a second entry next to it
++ Releases now publish an Inno Setup EXE-installer and a portable archive alongside the MSI, installers now offer the 64-bit `Program Files` directory, create `{app}\data` and `{app}\logs` and grant write access
 
 ### Fixes
 
