@@ -1,13 +1,19 @@
 import sys
 from importlib.util import find_spec
 
+import cx_Freeze
 from cx_Freeze import Executable, setup
 
 from sportorg import config
 
+CXFREEZE_MAJOR = int(cx_Freeze.__version__.split(".")[0])
+
 base = None
 if sys.platform == "win32":
-    base = "Win32GUI"
+    # The GUI base was renamed in cx_Freeze 8.0 and no fallback ships: 6.x/7.x
+    # only have "Win32GUI", 8.x only has "gui".  This file has to serve both --
+    # 6.15 under Python 3.8, 8.x under 3.14 -- so pick the name by version.
+    base = "gui" if CXFREEZE_MAJOR >= 8 else "Win32GUI"
 
 include_files = [
     (config.base_dir("sportorg", "data"), "lib/sportorg/data"),
@@ -84,6 +90,17 @@ bdist_msi_options = {
         ],
     },
 }
+
+
+if CXFREEZE_MAJOR >= 8:
+    # 8.x names the installer after ProductVersion, which MSI forces to be
+    # strictly numeric, so "v1.8.0b2" would ship as SportOrg-1.8.0-win64.msi and
+    # collide with the eventual 1.8.0.  Keep the name 6.x produced.
+    from cx_Freeze.command.bdist_msi import MSI_PLATFORM
+
+    bdist_msi_options["output_name"] = "{}-{}-{}.msi".format(
+        config.NAME.lower(), config.VERSION.lstrip("v"), MSI_PLATFORM
+    )
 
 options = {"build_exe": build_exe_options, "bdist_msi": bdist_msi_options}
 
